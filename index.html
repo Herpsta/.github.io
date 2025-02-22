@@ -28,6 +28,15 @@
 
 <script>
 // Game constants
+// Game State Management
+const GameState = {
+    RUNNING: 'running',
+    PAUSED: 'paused',
+    LEVELUP: 'levelup',
+    GAMEOVER: 'gameover'
+};
+
+// Detailed game constants
 const CONSTANTS = {
     PLAYER: {
         SPEED: 160,
@@ -36,6 +45,69 @@ const CONSTANTS = {
         SHOOT_DELAY: 400
     },
     ENEMY: {
+        BASIC: {
+            SPEED: 100,
+            HEALTH: 30,
+            DAMAGE: 10,
+            COLOR: 0xff0000,
+            XP_VALUE: 5,
+            DESCRIPTION: "Basic enemy: Balanced stats",
+            ABILITIES: []
+        },
+        FAST: {
+            SPEED: 150,
+            HEALTH: 20,
+            DAMAGE: 5,
+            COLOR: 0xff6600,
+            XP_VALUE: 8,
+            DESCRIPTION: "Fast enemy: High speed, low health",
+            ABILITIES: ['dash']
+        },
+        TANK: {
+            SPEED: 60,
+            HEALTH: 100,
+            DAMAGE: 20,
+            COLOR: 0x990000,
+            XP_VALUE: 15,
+            DESCRIPTION: "Tank enemy: High health and damage, slow speed",
+            ABILITIES: ['resistance']
+        },
+        RANGED: {
+            SPEED: 80,
+            HEALTH: 40,
+            DAMAGE: 15,
+            COLOR: 0x9900ff,
+            XP_VALUE: 12,
+            DESCRIPTION: "Ranged enemy: Attacks from distance",
+            ABILITIES: ['shoot']
+        },
+        SPAWNER: {
+            SPEED: 40,
+            HEALTH: 80,
+            DAMAGE: 5,
+            COLOR: 0x00ff99,
+            XP_VALUE: 20,
+            DESCRIPTION: "Spawner: Creates smaller enemies",
+            ABILITIES: ['spawn']
+        },
+        BOSS: {
+            SPEED: 70,
+            HEALTH: 500,
+            DAMAGE: 40,
+            COLOR: 0xff0066,
+            XP_VALUE: 100,
+            DESCRIPTION: "Boss: Extremely powerful enemy with multiple abilities",
+            ABILITIES: ['dash', 'shoot', 'spawn', 'resistance']
+        },
+        MINION: {
+            SPEED: 120,
+            HEALTH: 10,
+            DAMAGE: 3,
+            COLOR: 0x66ff66,
+            XP_VALUE: 2,
+            DESCRIPTION: "Minion: Weak but spawned in groups",
+            ABILITIES: []
+        }
         BASIC: {
             SPEED: 100,
             HEALTH: 30,
@@ -60,6 +132,65 @@ const CONSTANTS = {
         PROJECTILE: 0xffff00,
         XP_ORB: 0x0066ff
     },
+    UPGRADES: {
+        DAMAGE: {
+            name: "Increased Damage",
+            description: "Increase attack damage by 20%",
+            maxLevel: 10,
+            effect: (player) => {
+                player.damage *= 1.2;
+            }
+        },
+        HEALTH: {
+            name: "Maximum Health",
+            description: "Increase max health by 25",
+            maxLevel: 10,
+            effect: (player) => {
+                player.maxHealth += 25;
+                player.health = player.maxHealth;
+            }
+        },
+        SPEED: {
+            name: "Movement Speed",
+            description: "Increase movement speed by 10%",
+            maxLevel: 5,
+            effect: (player) => {
+                player.speed *= 1.1;
+            }
+        },
+        PROJECTILES: {
+            name: "Multiple Projectiles",
+            description: "Fire an additional projectile",
+            maxLevel: 4,
+            effect: (player) => {
+                player.projectileCount = (player.projectileCount || 1) + 1;
+            }
+        },
+        RANGE: {
+            name: "Attack Range",
+            description: "Increase projectile range by 20%",
+            maxLevel: 5,
+            effect: (player) => {
+                player.range *= 1.2;
+            }
+        },
+        COOLDOWN: {
+            name: "Attack Speed",
+            description: "Reduce attack cooldown by 10%",
+            maxLevel: 8,
+            effect: (player) => {
+                player.shootDelay *= 0.9;
+            }
+        },
+        MAGNET: {
+            name: "Item Magnet",
+            description: "Increase XP collection range by 25%",
+            maxLevel: 5,
+            effect: (player) => {
+                player.magnetRange *= 1.25;
+            }
+        }
+    },
     GAME: {
         SPAWN_RATE: 1000,
         MAX_ENEMIES: 50,
@@ -70,6 +201,11 @@ const CONSTANTS = {
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
+        this.gameState = GameState.RUNNING;
+        this.upgradeLevels = {};
+        Object.keys(CONSTANTS.UPGRADES).forEach(upgrade => {
+            this.upgradeLevels[upgrade] = 0;
+        });
     }
 
     preload() {
@@ -103,6 +239,10 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
+        // Initialize UI elements
+        this.createUI();
+        
+        // Initialize game state
         // Game state
         this.score = 0;
         this.level = 1;
@@ -174,8 +314,40 @@ class MainScene extends Phaser.Scene {
         this.updateHUD();
     }
 
+    createUI() {
+        // Create upgrade menu
+        this.upgradeMenu = document.createElement('div');
+        this.upgradeMenu.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            display: none;
+            z-index: 1000;
+        `;
+        document.body.appendChild(this.upgradeMenu);
+
+        // Create tooltip
+        this.tooltip = document.createElement('div');
+        this.tooltip.style.cssText = `
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            pointer-events: none;
+            z-index: 1001;
+            display: none;
+        `;
+        document.body.appendChild(this.tooltip);
+    }
+
     update() {
-        if (this.player.health <= 0) return;
+        if (this.gameState !== GameState.RUNNING) return;
         
         this.handlePlayerMovement();
         this.handleShooting();
@@ -273,6 +445,10 @@ class MainScene extends Phaser.Scene {
     }
 
     spawnEnemy() {
+        if (this.gameState !== GameState.RUNNING || 
+            this.enemies.getLength() >= CONSTANTS.GAME.MAX_ENEMIES) {
+            return;
+        }
         if (this.enemies.getLength() >= CONSTANTS.GAME.MAX_ENEMIES) {
             return;
         }
@@ -389,10 +565,77 @@ class MainScene extends Phaser.Scene {
         this.updateHUD();
     }
 
+    showUpgradeMenu() {
+        this.gameState = GameState.LEVELUP;
+        this.upgradeMenu.style.display = 'block';
+        
+        // Get available upgrades
+        const availableUpgrades = Object.entries(CONSTANTS.UPGRADES)
+            .filter(([key, upgrade]) => this.upgradeLevels[key] < upgrade.maxLevel)
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3);
+
+        // Create upgrade options
+        this.upgradeMenu.innerHTML = `
+            <h2 style="text-align: center; color: #ffff00; margin-bottom: 20px">Level Up!</h2>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                ${availableUpgrades.map(([key, upgrade]) => `
+                    <div class="upgrade-option" 
+                         style="padding: 10px; border: 1px solid #666; border-radius: 5px; cursor: pointer;"
+                         onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'"
+                         onmouseout="this.style.backgroundColor='transparent'"
+                         data-upgrade="${key}">
+                        <h3 style="margin: 0; color: #00ff00">${upgrade.name}</h3>
+                        <p style="margin: 5px 0; color: #aaa">${upgrade.description}</p>
+                        <small style="color: #666">Level ${this.upgradeLevels[key]}/${upgrade.maxLevel}</small>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        // Add click handlers
+        this.upgradeMenu.querySelectorAll('.upgrade-option').forEach(option => {
+            option.addEventListener('click', () => this.selectUpgrade(option.dataset.upgrade));
+        });
+    }
+
+    selectUpgrade(upgradeKey) {
+        const upgrade = CONSTANTS.UPGRADES[upgradeKey];
+        this.upgradeLevels[upgradeKey]++;
+        upgrade.effect(this.player);
+        
+        this.upgradeMenu.style.display = 'none';
+        this.gameState = GameState.RUNNING;
+        
+        this.showToast(`Upgraded ${upgrade.name}!`);
+    }
+
+    showToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            animation: fadeOut 2s forwards;
+            z-index: 1000;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => toast.remove(), 2000);
+    }
+
     levelUp() {
         this.level++;
         this.experience -= this.nextLevelExp;
         this.nextLevelExp = Math.floor(this.nextLevelExp * 1.2);
+        
+        this.showUpgradeMenu();
         
         // Increase player stats
         this.player.damage += 2;
@@ -406,7 +649,26 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(1);
     }
 
+    cleanup() {
+        // Clean up all game objects and event listeners
+        this.enemies.getChildren().forEach(enemy => {
+            if (enemy.healthBar) enemy.healthBar.destroy();
+            enemy.destroy();
+        });
+        this.projectiles.getChildren().forEach(proj => proj.destroy());
+        this.xpOrbs.getChildren().forEach(orb => orb.destroy());
+        
+        // Clear timers
+        this.time.removeAllEvents();
+        
+        // Remove UI elements
+        this.upgradeMenu.remove();
+        this.tooltip.remove();
+    }
+
     gameOver() {
+        this.gameState = GameState.GAMEOVER;
+        this.cleanup();
         this.add.text(400, 300, 'GAME OVER\nClick to restart', {
             fontSize: '48px',
             fill: '#ff0000',
