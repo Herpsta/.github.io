@@ -1,4 +1,113 @@
-<!DOCTYPE html>
+// Test Suite
+class GameTest {
+    constructor(game) {
+        this.game = game;
+        this.scene = game.scene.scenes[0];
+        this.results = [];
+    }
+
+    async runTests() {
+        console.log('Running tests...');
+        
+        await this.testPlayerMovement();
+        await this.testDashMechanics();
+        await this.testEnemyBehavior();
+        await this.testCollisions();
+        await this.testSettingsSystem();
+        
+        this.displayResults();
+    }
+
+    async testPlayerMovement() {
+        const player = this.scene.player;
+        const initialX = player.x;
+        const initialY = player.y;
+
+        // Test basic movement
+        this.scene.wasd.D.isDown = true;
+        this.scene.handlePlayerMovement();
+        this.addResult(
+            'Player moves right',
+            player.body.velocity.x > 0,
+            'Player should move right when D is pressed'
+        );
+
+        // Test diagonal movement speed
+        this.scene.wasd.D.isDown = true;
+        this.scene.wasd.W.isDown = true;
+        this.scene.handlePlayerMovement();
+        const diagonalSpeed = Math.sqrt(
+            Math.pow(player.body.velocity.x, 2) + 
+            Math.pow(player.body.velocity.y, 2)
+        );
+        this.addResult(
+            'Diagonal movement normalized',
+            Math.abs(diagonalSpeed - player.speed) < 1,
+            'Diagonal movement speed should equal base speed'
+        );
+    }
+
+    async testDashMechanics() {
+        const player = this.scene.player;
+        
+        // Test dash cooldown
+        this.scene.dash();
+        const cantDashImmediately = !this.scene.dash();
+        this.addResult(
+            'Dash cooldown works',
+            cantDashImmediately,
+            'Player should not be able to dash during cooldown'
+        );
+
+        // Test dash speed
+        this.scene.wasd.D.isDown = true;
+        await this.wait(player.dashCooldown);
+        this.scene.dash();
+        this.addResult(
+            'Dash velocity correct',
+            player.body.velocity.x === player.dashSpeed,
+            'Dash speed should match dashSpeed setting'
+        );
+
+        // Test invincibility frames
+        const wasInvincible = player.isInvincible;
+        await this.wait(CONSTANTS.PLAYER.DASH.INVINCIBLE_DURATION + 50);
+        this.addResult(
+            'Invincibility frames work',
+            wasInvincible && !player.isInvincible,
+            'Player should be invincible during dash then vulnerable'
+        );
+    }
+
+    async testEnemyBehavior() {
+        const enemy = this.scene.spawnEnemy();
+        const initialHealth = enemy.getData('health');
+
+        // Test enemy damage
+        enemy.setData('health', initialHealth - 10);
+        this.addResult(
+            'Enemy health system works',
+            enemy.getData('health') === initialHealth - 10,
+            'Enemy health should decrease when damaged'
+        );
+
+        // Test enemy persistence
+        const playerCollision = new Event('overlap');
+        this.scene.damagePlayer(this.scene.player, enemy);
+        this.addResult(
+            'Enemy persists after collision',
+            enemy.active,
+            'Enemy should not be destroyed on player collision'
+        );
+    }
+
+    async testCollisions() {
+        const enemy = this.scene.spawnEnemy();
+        const initialPlayerHealth = this.scene.player.health;
+
+        // Test player damage
+        this.scene.damagePlayer(this.scene.player, enemy);
+        this<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -42,7 +151,13 @@ const CONSTANTS = {
         SPEED: 160,
         HEALTH: 100,
         SIZE: 20,
-        SHOOT_DELAY: 400
+        SHOOT_DELAY: 400,
+        DASH: {
+            SPEED: 400,
+            DURATION: 200,
+            COOLDOWN: 2000,
+            INVINCIBLE_DURATION: 100
+        }
     },
     ENEMY: {
         BASIC: {
@@ -239,10 +354,243 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
+        // Load saved settings if they exist
+        this.loadSettings();
+        
         // Initialize UI elements
         this.createUI();
         
         // Initialize game state
+        this.score = 0;
+        this.level = 1;
+        this.experience = 0;
+        this.nextLevelExp = 100;
+        
+        // Initialize player
+        this.player = this.physics.add.sprite(400, 300, 'player');
+        this.player.health = this.gameSettings.playerHealth;
+        this.player.maxHealth = this.gameSettings.playerHealth;
+        this.player.damage = this.gameSettings.playerDamage;
+        this.player.speed = this.gameSettings.playerSpeed;
+        this.player.dashSpeed = this.gameSettings.dashSpeed;
+        this.player.dashDuration = this.gameSettings.dashDuration;
+        this.player.dashCooldown = this.gameSettings.dashCooldown;
+        this.player.lastDashTime = 0;
+        this.player.isDashing = false;
+        this.player.isInvincible = false;
+        this.player.setCollideWorldBounds(true);
+        
+        // Setup controls
+        this.setupControls();
+        
+        // Rest of the create function...
+    }
+
+    setupControls() {
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.wasd = this.input.keyboard.addKeys({
+            W: Phaser.Input.Keyboard.KeyCodes.W,
+            A: Phaser.Input.Keyboard.KeyCodes.A,
+            S: Phaser.Input.Keyboard.KeyCodes.S,
+            D: Phaser.Input.Keyboard.KeyCodes.D,
+            SPACE: Phaser.Input.Keyboard.KeyCodes.SPACE
+        });
+
+        // Mobile controls
+        if (this.sys.game.device.input.touch) {
+            this.setupMobileControls();
+        }
+    }
+
+    setupMobileControls() {
+        // Movement joystick
+        const joystickBase = this.add.circle(100, this.game.config.height - 100, 50, 0x888888, 0.5);
+        const joystickThumb = this.add.circle(100, this.game.config.height - 100, 25, 0xcccccc, 0.8);
+        
+        this.joystick = {
+            base: joystickBase,
+            thumb: joystickThumb,
+            isActive: false,
+            direction: { x: 0, y: 0 }
+        };
+
+        // Dash button
+        const dashButton = this.add.circle(this.game.config.width - 100, this.game.config.height - 100, 40, 0xff0000, 0.5);
+        dashButton.setInteractive();
+        dashButton.on('pointerdown', () => this.dash());
+
+        // Make UI elements fixed to camera
+        joystickBase.setScrollFactor(0);
+        joystickThumb.setScrollFactor(0);
+        dashButton.setScrollFactor(0);
+    }
+
+    loadSettings() {
+        const savedSettings = localStorage.getItem('gameSettings');
+        this.gameSettings = savedSettings ? JSON.parse(savedSettings) : {
+            playerHealth: CONSTANTS.PLAYER.HEALTH,
+            playerSpeed: CONSTANTS.PLAYER.SPEED,
+            playerDamage: 10,
+            dashSpeed: CONSTANTS.PLAYER.DASH.SPEED,
+            dashDuration: CONSTANTS.PLAYER.DASH.DURATION,
+            dashCooldown: CONSTANTS.PLAYER.DASH.COOLDOWN,
+            enemySpawnRate: CONSTANTS.GAME.SPAWN_RATE,
+            difficultyScaling: 1.1
+        };
+    }
+
+    saveSettings() {
+        localStorage.setItem('gameSettings', JSON.stringify(this.gameSettings));
+    }
+
+    showSettingsMenu() {
+        this.gameState = GameState.PAUSED;
+        
+        const settingsHTML = `
+            <div style="background: rgba(0,0,0,0.9); padding: 20px; border-radius: 10px; min-width: 300px;">
+                <h2 style="color: #fff; text-align: center;">Game Settings</h2>
+                ${Object.entries(this.gameSettings).map(([key, value]) => `
+                    <div style="margin: 10px 0;">
+                        <label style="color: #fff; display: block; margin-bottom: 5px;">
+                            ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                        </label>
+                        <input type="range" 
+                               min="${value/2}" 
+                               max="${value*2}" 
+                               value="${value}" 
+                               step="${value/20}"
+                               data-setting="${key}"
+                               style="width: 100%;">
+                        <span style="color: #fff;" id="${key}_value">${value}</span>
+                    </div>
+                `).join('')}
+                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                    <button onclick="window.saveSettings()" style="padding: 10px;">Save</button>
+                    <button onclick="window.loadSettings()" style="padding: 10px;">Load Defaults</button>
+                    <button onclick="window.closeSettings()" style="padding: 10px;">Close</button>
+                </div>
+            </div>
+        `;
+
+        this.settingsMenu.innerHTML = settingsHTML;
+        this.settingsMenu.style.display = 'flex';
+
+        // Add event listeners for sliders
+        this.settingsMenu.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const setting = e.target.dataset.setting;
+                const value = parseFloat(e.target.value);
+                this.gameSettings[setting] = value;
+                document.getElementById(`${setting}_value`).textContent = value;
+            });
+        });
+
+        // Add global handlers for the buttons
+        window.saveSettings = () => {
+            this.saveSettings();
+            this.showToast('Settings saved!');
+        };
+        window.loadSettings = () => {
+            this.loadSettings();
+            this.showSettingsMenu();
+            this.showToast('Default settings loaded!');
+        };
+        window.closeSettings = () => {
+            this.settingsMenu.style.display = 'none';
+            this.gameState = GameState.RUNNING;
+        };
+    }
+
+    dash() {
+        if (this.gameState !== GameState.RUNNING || 
+            this.time.now - this.player.lastDashTime < this.player.dashCooldown) {
+            return;
+        }
+
+        this.player.isDashing = true;
+        this.player.isInvincible = true;
+        this.player.lastDashTime = this.time.now;
+
+        // Visual feedback
+        this.player.setTint(0x00ffff);
+
+        // Get dash direction
+        let dashVelX = 0;
+        let dashVelY = 0;
+        if (this.cursors.left.isDown || this.wasd.A.isDown) dashVelX -= 1;
+        if (this.cursors.right.isDown || this.wasd.D.isDown) dashVelX += 1;
+        if (this.cursors.up.isDown || this.wasd.W.isDown) dashVelY -= 1;
+        if (this.cursors.down.isDown || this.wasd.S.isDown) dashVelY += 1;
+
+        // Normalize and apply dash velocity
+        if (dashVelX !== 0 || dashVelY !== 0) {
+            const norm = Math.sqrt(dashVelX * dashVelX + dashVelY * dashVelY);
+            dashVelX = (dashVelX / norm) * this.player.dashSpeed;
+            dashVelY = (dashVelY / norm) * this.player.dashSpeed;
+        } else {
+            // Dash in facing direction if no direction pressed
+            dashVelX = this.player.dashSpeed * Math.cos(this.player.rotation);
+            dashVelY = this.player.dashSpeed * Math.sin(this.player.rotation);
+        }
+
+        this.player.setVelocity(dashVelX, dashVelY);
+
+        // End dash after duration
+        this.time.delayedCall(this.player.dashDuration, () => {
+            this.player.isDashing = false;
+            this.player.setVelocity(0, 0);
+        });
+
+        // End invincibility
+        this.time.delayedCall(CONSTANTS.PLAYER.DASH.INVINCIBLE_DURATION, () => {
+            this.player.isInvincible = false;
+            this.player.clearTint();
+        });
+    }
+
+    handlePlayerMovement() {
+        if (this.player.isDashing) return;
+
+        let vx = 0;
+        let vy = 0;
+
+        if (this.cursors.left.isDown || this.wasd.A.isDown) vx -= 1;
+        if (this.cursors.right.isDown || this.wasd.D.isDown) vx += 1;
+        if (this.cursors.up.isDown || this.wasd.W.isDown) vy -= 1;
+        if (this.cursors.down.isDown || this.wasd.S.isDown) vy += 1;
+        
+        // Handle dash
+        if (this.wasd.SPACE.isDown) {
+            this.dash();
+        }
+
+        if (vx !== 0 || vy !== 0) {
+            const norm = Math.sqrt(vx * vx + vy * vy);
+            vx = (vx / norm) * this.player.speed;
+            vy = (vy / norm) * this.player.speed;
+        }
+
+        this.player.setVelocity(vx, vy);
+    }
+
+    damagePlayer(player, enemy) {
+        if (player.isInvincible) return;
+
+        const damage = enemy.getData('damage');
+        player.health -= damage;
+        
+        // Visual feedback
+        player.setTint(0xff0000);
+        this.time.delayedCall(100, () => {
+            if (player.active) player.clearTint();
+        });
+        
+        this.updateHUD();
+        
+        if (player.health <= 0) {
+            this.gameOver();
+        }
+    }
         // Game state
         this.score = 0;
         this.level = 1;
@@ -315,35 +663,257 @@ class MainScene extends Phaser.Scene {
     }
 
     createUI() {
-        // Create upgrade menu
-        this.upgradeMenu = document.createElement('div');
-        this.upgradeMenu.style.cssText = `
+        // Previous UI code...
+
+        // Add test button
+        const testButton = document.createElement('button');
+        testButton.innerHTML = '🧪 Run Tests';
+        testButton.style.cssText = `
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 10px;
+            top: 10px;
+            right: 120px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
             color: white;
-            display: none;
+            border: 1px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
             z-index: 1000;
         `;
-        document.body.appendChild(this.upgradeMenu);
+        document.body.appendChild(testButton);
+        testButton.onclick = () => {
+            const testSuite = new TestSuite(this);
+            testSuite.runTests();
+        };
+        // Create settings button
+        const settingsButton = document.createElement('button');
+        settingsButton.innerHTML = '⚙️ Settings';
+        settingsButton.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        `;
+        document.body.appendChild(settingsButton);
+        settingsButton.onclick = () => this.showSettingsMenu();
 
+        // Create settings menu
+        this.settingsMenu = document.createElement('div');
+        this.settingsMenu.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+        `;
+        document.body.appendChild(this.settingsMenu);
+        
+        // Initialize HUD
+        this.hud = document.getElementById('hud');
+        
         // Create tooltip
         this.tooltip = document.createElement('div');
         this.tooltip.style.cssText = `
             position: absolute;
             background: rgba(0, 0, 0, 0.9);
+            color: white;
             padding: 10px;
             border-radius: 5px;
-            color: white;
             pointer-events: none;
-            z-index: 1001;
+            z-index: 1002;
             display: none;
         `;
         document.body.appendChild(this.tooltip);
+    }
+
+    showSettingsMenu() {
+        this.gameState = GameState.PAUSED;
+        this.scene.pause();
+        
+        const menuContent = `
+            <div style="background: rgba(20, 20, 20, 0.95); padding: 20px; border-radius: 10px; min-width: 400px; max-height: 80vh; overflow-y: auto;">
+                <h2 style="color: #fff; text-align: center; margin-bottom: 20px;">Game Settings</h2>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #aaa;">Player Settings</h3>
+                    ${this.createSettingSlider('playerHealth', 'Health', 50, 200)}
+                    ${this.createSettingSlider('playerSpeed', 'Speed', 100, 300)}
+                    ${this.createSettingSlider('playerDamage', 'Damage', 5, 30)}
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #aaa;">Dash Settings</h3>
+                    ${this.createSettingSlider('dashSpeed', 'Dash Speed', 200, 800)}
+                    ${this.createSettingSlider('dashDuration', 'Dash Duration', 100, 500)}
+                    ${this.createSettingSlider('dashCooldown', 'Dash Cooldown', 500, 5000)}
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #aaa;">Game Settings</h3>
+                    ${this.createSettingSlider('enemySpawnRate', 'Enemy Spawn Rate', 500, 3000)}
+                    ${this.createSettingSlider('difficultyScaling', 'Difficulty Scaling', 1, 2, 0.05)}
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #aaa;">Visual & Audio</h3>
+                    ${this.createSettingSlider('soundVolume', 'Sound Effects', 0, 1, 0.1)}
+                    ${this.createSettingSlider('musicVolume', 'Music', 0, 1, 0.1)}
+                    ${this.createToggleSetting('particleEffects', 'Particle Effects')}
+                    ${this.createToggleSetting('showDamageNumbers', 'Show Damage Numbers')}
+                    ${this.createToggleSetting('screenShake', 'Screen Shake')}
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                    <button onclick="game.scene.scenes[0].saveSettings()" 
+                            style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Save Settings
+                    </button>
+                    <button onclick="game.scene.scenes[0].loadDefaultSettings()" 
+                            style="padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Reset to Default
+                    </button>
+                    <button onclick="game.scene.scenes[0].closeSettingsMenu()" 
+                            style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.settingsMenu.innerHTML = menuContent;
+        this.settingsMenu.style.display = 'flex';
+
+        // Add event listeners for all inputs
+        this.settingsMenu.querySelectorAll('input').forEach(input => {
+            input.addEventListener('change', () => this.updateSetting(input));
+            input.addEventListener('input', () => this.updateSettingLabel(input));
+        });
+    }
+
+    createSettingSlider(key, label, min, max, step = 1) {
+        const value = this.gameSettings[key];
+        return `
+            <div style="margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <label style="color: #fff;">${label}</label>
+                    <span style="color: #fff;" id="${key}_value">${value}</span>
+                </div>
+                <input type="range" 
+                       min="${min}" 
+                       max="${max}" 
+                       step="${step}"
+                       value="${value}"
+                       data-setting="${key}"
+                       style="width: 100%;">
+            </div>
+        `;
+    }
+
+    createToggleSetting(key, label) {
+        const checked = this.gameSettings[key];
+        return `
+            <div style="margin: 10px 0; display: flex; justify-content: space-between; align-items: center;">
+                <label style="color: #fff;">${label}</label>
+                <input type="checkbox" 
+                       ${checked ? 'checked' : ''}
+                       data-setting="${key}"
+                       style="width: 20px; height: 20px;">
+            </div>
+        `;
+    }
+
+    updateSetting(input) {
+        const key = input.dataset.setting;
+        const value = input.type === 'checkbox' ? input.checked : parseFloat(input.value);
+        this.gameSettings[key] = value;
+        this.applySettings();
+    }
+
+    updateSettingLabel(input) {
+        if (input.type === 'range') {
+            const key = input.dataset.setting;
+            document.getElementById(`${key}_value`).textContent = input.value;
+        }
+    }
+
+    applySettings() {
+        // Apply player settings
+        this.player.maxHealth = this.gameSettings.playerHealth;
+        this.player.speed = this.gameSettings.playerSpeed;
+        this.player.damage = this.gameSettings.playerDamage;
+        this.player.dashSpeed = this.gameSettings.dashSpeed;
+        this.player.dashDuration = this.gameSettings.dashDuration;
+        this.player.dashCooldown = this.gameSettings.dashCooldown;
+
+        // Apply game settings
+        if (this.spawnTimer) {
+            this.spawnTimer.delay = this.gameSettings.enemySpawnRate;
+        }
+
+        // Apply visual settings
+        if (!this.gameSettings.particleEffects) {
+            this.particles?.destroy();
+        }
+    }
+
+    saveSettings() {
+        localStorage.setItem('gameSettings', JSON.stringify(this.gameSettings));
+        this.showToast('Settings saved!');
+    }
+
+    loadDefaultSettings() {
+        this.gameSettings = { ...CONSTANTS.GAME.DEFAULT_SETTINGS };
+        this.applySettings();
+        this.showSettingsMenu(); // Refresh menu with default values
+        this.showToast('Default settings restored!');
+    }
+
+    loadSavedSettings() {
+        const saved = localStorage.getItem('gameSettings');
+        if (saved) {
+            this.gameSettings = { ...CONSTANTS.GAME.DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        } else {
+            this.gameSettings = { ...CONSTANTS.GAME.DEFAULT_SETTINGS };
+        }
+        this.applySettings();
+    }
+
+    closeSettingsMenu() {
+        this.settingsMenu.style.display = 'none';
+        this.gameState = GameState.RUNNING;
+        this.scene.resume();
+    }
+
+    showToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1003;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 2000);
     }
 
     update() {
@@ -392,14 +962,23 @@ class MainScene extends Phaser.Scene {
     }
 
     handlePlayerMovement() {
+        if (this.player.isDashing) return;
+
         let vx = 0;
         let vy = 0;
 
+        // Normal movement
         if (this.cursors.left.isDown || this.wasd.A.isDown) vx -= 1;
         if (this.cursors.right.isDown || this.wasd.D.isDown) vx += 1;
         if (this.cursors.up.isDown || this.wasd.W.isDown) vy -= 1;
         if (this.cursors.down.isDown || this.wasd.S.isDown) vy += 1;
 
+        // Handle dash input
+        if (this.wasd.SPACE.isDown) {
+            this.dash();
+        }
+
+        // Normalize movement
         if (vx !== 0 || vy !== 0) {
             const norm = Math.sqrt(vx * vx + vy * vy);
             vx = (vx / norm) * CONSTANTS.PLAYER.SPEED;
@@ -407,6 +986,76 @@ class MainScene extends Phaser.Scene {
         }
 
         this.player.setVelocity(vx, vy);
+    }
+
+    dash() {
+        // Check cooldown
+        if (this.time.now - this.player.lastDashTime < CONSTANTS.PLAYER.DASH.COOLDOWN) {
+            return false;
+        }
+
+        this.player.isDashing = true;
+        this.player.isInvincible = true;
+        this.player.lastDashTime = this.time.now;
+
+        // Visual feedback
+        this.player.setTint(0x00ffff);
+
+        // Get dash direction from current movement
+        let dashVelX = 0;
+        let dashVelY = 0;
+        if (this.cursors.left.isDown || this.wasd.A.isDown) dashVelX -= 1;
+        if (this.cursors.right.isDown || this.wasd.D.isDown) dashVelX += 1;
+        if (this.cursors.up.isDown || this.wasd.W.isDown) dashVelY -= 1;
+        if (this.cursors.down.isDown || this.wasd.S.isDown) dashVelY += 1;
+
+        // If no direction pressed, dash in facing direction
+        if (dashVelX === 0 && dashVelY === 0) {
+            const angle = this.player.rotation;
+            dashVelX = Math.cos(angle);
+            dashVelY = Math.sin(angle);
+        }
+
+        // Normalize and apply dash velocity
+        const norm = Math.sqrt(dashVelX * dashVelX + dashVelY * dashVelY);
+        dashVelX = (dashVelX / norm) * CONSTANTS.PLAYER.DASH.SPEED;
+        dashVelY = (dashVelY / norm) * CONSTANTS.PLAYER.DASH.SPEED;
+        
+        this.player.setVelocity(dashVelX, dashVelY);
+
+        // Create dash effect
+        this.createDashEffect();
+
+        // End dash after duration
+        this.time.delayedCall(CONSTANTS.PLAYER.DASH.DURATION, () => {
+            this.player.isDashing = false;
+            this.player.setVelocity(0, 0);
+        });
+
+        // End invincibility
+        this.time.delayedCall(CONSTANTS.PLAYER.DASH.INVINCIBLE_DURATION, () => {
+            this.player.isInvincible = false;
+            this.player.clearTint();
+        });
+
+        return true;
+    }
+
+    createDashEffect() {
+        const particles = this.add.particles(-10, -10, 'particle', {
+            speed: 200,
+            angle: { min: 0, max: 360 },
+            scale: { start: 1, end: 0 },
+            blendMode: 'ADD',
+            lifespan: 100,
+            gravityY: 0
+        });
+
+        particles.startFollow(this.player);
+
+        this.time.delayedCall(CONSTANTS.PLAYER.DASH.DURATION, () => {
+            particles.destroy();
+        });
     }
 
     handleShooting() {
