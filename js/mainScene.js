@@ -35,6 +35,12 @@ class MainScene extends Phaser.Scene {
         // Debug info
         console.log('Scene created, starting first wave');
         this.waveSystem.startWave();
+        console.log('Assets loaded:', {
+            player: this.textures.exists('player'),
+            enemy: this.textures.exists('enemy'),
+            projectile: this.textures.exists('projectile'),
+            powerup: this.textures.exists('powerup')
+        });
 
         // Add periodic wave check
         this.time.addEvent({
