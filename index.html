@@ -1,54 +1,15 @@
+// index.html
 <!DOCTYPE html>
 <html>
 <head>
     <title>Wave Survival Game</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
-    <h1 class="game-title">Wave Survival Game</h1>
-    
-    <div id="hud">
-        Loading game stats...
-    </div>
-    
     <div id="game-container"></div>
-    
-    <div class="controls-container">
-        <h2>How to Play</h2>
-        <ul class="controls-list">
-            <li><span class="key">↑↓←→</span> Move your character</li>
-            <li><span class="key">SPACE</span> Shoot (aims toward mouse)</li>
-            <li><span class="key">T</span> Open/Close Skill Tree</li>
-        </ul>
-
-        <h2>Game Tips</h2>
-        <ul class="controls-list">
-            <li>Defeat enemies to gain XP and level up</li>
-            <li>Collect power-ups to gain temporary bonuses</li>
-            <li>Survive waves to earn achievements and coins</li>
-            <li>Use skill points to upgrade your character</li>
-        </ul>
-
-        <h2>Power-ups</h2>
-        <ul class="controls-list">
-            <li>🟡 Yellow: Speed Boost</li>
-            <li>🔴 Red: Rapid Fire</li>
-            <li>🟠 Orange: Damage Boost</li>
-        </ul>
-    </div>
-
-    <div class="footer">
-        © 2024 Wave Survival Game | Press F11 for fullscreen
-    </div>
-
-    <!-- Game Scripts -->
-    <script src="js/gameState.js"></script>
-    <script src="js/waveSystem.js"></script>
-    <script src="js/achievementSystem.js"></script>
-    <script src="js/powerupSystem.js"></script>
-    <script src="js/skillTree.js"></script>
-    <script src="js/mainScene.js"></script>
-    <script src="js/game.js"></script>
+    <script type="module" src="src/Game.js"></script>
 </body>
 </html>
