@@ -103,14 +103,24 @@ let gameState = {
     projectileCount: 1
 };
 
+// Global variables
 let player, projectiles, enemies, xpOrbs, coins;
-let cursors, gameOver = false;
+let cursors, wasd; // Declare wasd globally
+let gameOver = false;
 let debugMode = false;
 let currentScene;
 
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
+    }
+
+    init() {
+        // Initialize audio context after user interaction
+        this.sound.pauseOnBlur = false;
+        this.sound.once('unlocked', () => {
+            console.log('Audio unlocked');
+        });
     }
 
     preload() {
@@ -475,14 +485,24 @@ const config = {
     physics: {
         default: 'arcade',
         arcade: {
-            debug: false
+            debug: false,
+            gravity: { x: 0, y: 0 }
         }
     },
-    scene: MainScene
+    scene: MainScene,
+    audio: {
+        disableWebAudio: false
+    }
 };
 
-// Create game instance
-const game = new Phaser.Game(config);
+// Initialize game after user interaction
+document.addEventListener('click', function initGame() {
+    const game = new Phaser.Game(config);
+    document.removeEventListener('click', initGame);
+}, { once: true });
+
+// Show click to start message
+document.getElementById('hud').innerHTML = 'Click anywhere to start game';
 
 // UI Functions
 function toggleDebug() {
