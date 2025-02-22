@@ -1,264 +1,410 @@
-// First, let's resolve the merge conflicts and organize the code
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Infinite Survivor Game – Phaser Edition</title>
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mocha/mocha.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chai/chai.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mocha/mocha.css" />
-  <style>
-    body { margin: 0; background: #111; }
-    #gameContainer { position: relative; }
-    canvas { display: block; }
-    .overlay {
-      position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      display: none; 
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      font-family: Arial, sans-serif;
-      color: white;
-      z-index: 10;
-    }
-    .button {
-      margin: 10px;
-      padding: 10px 20px;
-      background: #444;
-      border: none;
-      color: white;
-      cursor: pointer;
-    }
-    .button:hover { background: #666; }
-    #gameControls {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 20;
-    }
-    #hud {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 30;
-      color: white;
-      font-family: Arial, sans-serif;
-    }
-    #debugOverlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      background: rgba(0,0,0,0.7);
-      color: #0f0;
-      padding: 5px;
-      font-family: monospace;
-      font-size: 12px;
-      z-index: 40;
-      display: none;
-    }
-    #mocha { padding: 20px; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Infinite Survivor Game – Phaser Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+    <style>
+        body { margin: 0; background: #111; }
+        #gameContainer { position: relative; }
+        canvas { display: block; }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+            color: white;
+            z-index: 10;
+        }
+        .button {
+            margin: 10px;
+            padding: 10px 20px;
+            background: #444;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        .button:hover { background: #666; }
+        #gameControls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 20;
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #debugOverlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            padding: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 40;
+            display: none;
+        }
+    </style>
 </head>
 <body>
 <div id="gameContainer">
-  <div id="gameControls">
-    <button class="button" onclick="restartGame()">Restart</button>
-    <button class="button" onclick="saveGame()">Save Game</button>
-    <button class="button" onclick="loadGame()">Load Game</button>
-    <button class="button" onclick="openShop()">Shop</button>
-    <button class="button" onclick="openSettings()">Settings</button>
-    <button class="button" onclick="openBestiary()">Bestiary</button>
-    <button class="button" onclick="toggleDebug()">Toggle Debug</button>
-    <button class="button" onclick="runTests()">Run Tests</button>
-  </div>
-  <div id="hud"></div>
-  <div id="debugOverlay"></div>
-  
-  <!-- Upgrade Overlay -->
-  <div id="upgradeOverlay" class="overlay">
-    <h1>Level Up!</h1>
-    <h2>Upgrades</h2>
-    <button class="button" onclick="chooseUpgrade('damage')">Increase Blaster Damage (+10%)</button>
-    <button class="button" onclick="chooseUpgrade('player')">Increase Player Speed (+5%)</button>
-    <button class="button" onclick="chooseUpgrade('attack')">Upgrade MultiShot (+1 Ball)</button>
-    <h2>Accessories</h2>
-    <button class="button" onclick="chooseUpgrade('accessory')">Accessory Upgrade (Add Blaster Functionality)</button>
-  </div>
+    <div id="gameControls">
+        <button class="button" onclick="restartGame()">Restart</button>
+        <button class="button" onclick="saveGame()">Save Game</button>
+        <button class="button" onclick="loadGame()">Load Game</button>
+        <button class="button" onclick="openShop()">Shop</button>
+        <button class="button" onclick="openSettings()">Settings</button>
+        <button class="button" onclick="toggleDebug()">Debug</button>
+    </div>
+    <div id="hud"></div>
+    <div id="debugOverlay"></div>
 
-  <!-- Shop Overlay -->
-  <div id="shopOverlay" class="overlay">
-    <h1>Shop</h1>
-    <p>Persistent Coins: <span id="coinCount">0</span></p>
-    <button class="button" onclick="buyItem('maxHealth')">Increase Max Health (+20) - 10 coins</button>
-    <button class="button" onclick="buyItem('speed')">Increase Speed (+1) - 15 coins</button>
-    <button class="button" onclick="buyItem('damage')">Increase Damage (+2) - 20 coins</button>
-    <button class="button" onclick="buyItem('xpSuck')">Increase XP Suck Range (+20) - 10 coins</button>
-    <button class="button" onclick="buyItem('coinSuck')">Increase Coin Suck Range (+20) - 10 coins</button>
-    <button class="button" onclick="buyItem('restore')">Restore Health - 5 coins</button>
-    <button class="button" onclick="closeShop()">Close Shop</button>
-  </div>
+    <div id="upgradeOverlay" class="overlay">
+        <h1>Level Up!</h1>
+        <button class="button" onclick="chooseUpgrade('damage')">Increase Damage (+10%)</button>
+        <button class="button" onclick="chooseUpgrade('speed')">Increase Speed (+5%)</button>
+        <button class="button" onclick="chooseUpgrade('multishot')">Add Projectile</button>
+    </div>
 
-  <!-- Settings Overlay -->
-  <div id="settingsOverlay" class="overlay">
-    <h1>Settings</h1>
-    <p>Customize game values:</p>
-    <div><label>Player Base Speed: </label><input type="number" id="inpPlayerSpeed" value="100"></div>
-    <div><label>Bullet Speed: </label><input type="number" id="inpBulletSpeed" value="100"></div>
-    <div><label>Enemy Speed: </label><input type="number" id="inpEnemySpeed" value="60"></div>
-    <div><label>XP Suck Range: </label><input type="number" id="inpXpSuck" value="100"></div>
-    <div><label>Coin Suck Range: </label><input type="number" id="inpCoinSuck" value="150"></div>
-    <div><label>Fire Interval (ms): </label><input type="number" id="inpFireInterval" value="1500"></div>
-    <div><label>Player Attack Damage: </label><input type="number" id="inpAttackDamage" value="10"></div>
-    <div><label>Projectile Lifetime (ms): </label><input type="number" id="inpProjLifetime" value="4000"></div>
-    <button class="button" onclick="saveSettings()">Save Settings</button>
-    <button class="button" onclick="closeSettings()">Close Settings</button>
-  </div>
-
-  <!-- Bestiary Overlay -->
-  <div id="bestiaryOverlay" class="overlay">
-    <h1>Bestiary</h1>
-    <p>Enemy Types:</p>
-    <ul>
-      <li><strong>Basic:</strong> Low health, standard speed, does not shoot.</li>
-      <li><strong>Fast:</strong> Lower health, higher speed.</li>
-      <li><strong>Shooter:</strong> Moderate health, shoots two projectiles.</li>
-      <li><strong>Bomber:</strong> High health, drops bombs that explode with area damage.</li>
-    </ul>
-    <button class="button" onclick="closeBestiary()">Close Bestiary</button>
-  </div>
-
-  <!-- Game Over Overlay -->
-  <div id="gameOverOverlay" class="overlay">
-    <h1>Game Over</h1>
-    <p>Final EXP: <span id="finalExp">0</span></p>
-    <button class="button" onclick="restartGame()">Restart Game</button>
-  </div>
+    <div id="shopOverlay" class="overlay">
+        <h1>Shop</h1>
+        <p>Coins: <span id="coinCount">0</span></p>
+        <button class="button" onclick="buyItem('health')">+20 Max Health (10 coins)</button>
+        <button class="button" onclick="buyItem('speed')">+5% Speed (15 coins)</button>
+        <button class="button" onclick="closeShop()">Close</button>
+    </div>
 </div>
 
 <script>
-// Global game state
-let debugMode = false;
+// Game state
 let gameState = {
     playerHealth: 100,
-    playerLives: 3,
+    maxHealth: 100,
+    playerSpeed: 200,
     experience: 0,
     level: 1,
-    nextLevelExp: 50,
-    playerAttackDamage: 10,
-    persistentCoins: Number(localStorage.getItem('persistentCoins')) || 0
+    coins: 0,
+    damage: 10,
+    projectileCount: 1
 };
 
+let player, projectiles, enemies, xpOrbs, coins;
+let cursors, gameOver = false;
+let debugMode = false;
+let currentScene;
+
+class MainScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'MainScene' });
+    }
+
+    preload() {
+        // Generate textures
+        let graphics = this.add.graphics();
+        
+        // Player
+        graphics.fillStyle(0x00ff00);
+        graphics.fillCircle(16, 16, 16);
+        graphics.generateTexture('player', 32, 32);
+        graphics.clear();
+
+        // Projectile
+        graphics.fillStyle(0xffff00);
+        graphics.fillCircle(4, 4, 4);
+        graphics.generateTexture('projectile', 8, 8);
+        graphics.clear();
+
+        // Enemy
+        graphics.fillStyle(0xff0000);
+        graphics.fillCircle(12, 12, 12);
+        graphics.generateTexture('enemy', 24, 24);
+        graphics.clear();
+
+        // XP orb
+        graphics.fillStyle(0x0000ff);
+        graphics.fillCircle(4, 4, 4);
+        graphics.generateTexture('xp', 8, 8);
+        graphics.clear();
+
+        // Coin
+        graphics.fillStyle(0xffd700);
+        graphics.fillCircle(4, 4, 4);
+        graphics.generateTexture('coin', 8, 8);
+        graphics.clear();
+    }
+
+    create() {
+        currentScene = this;
+        
+        // Create groups
+        projectiles = this.physics.add.group();
+        enemies = this.physics.add.group();
+        xpOrbs = this.physics.add.group();
+        coins = this.physics.add.group();
+
+        // Create player
+        player = this.physics.add.sprite(400, 300, 'player');
+        player.setCollideWorldBounds(true);
+
+        // Setup controls
+        cursors = this.input.keyboard.createCursorKeys();
+
+        // Collisions
+        this.physics.add.overlap(projectiles, enemies, this.hitEnemy, null, this);
+        this.physics.add.overlap(player, enemies, this.hitPlayer, null, this);
+        this.physics.add.overlap(player, xpOrbs, this.collectXP, null, this);
+        this.physics.add.overlap(player, coins, this.collectCoin, null, this);
+
+        // Enemy spawning
+        this.time.addEvent({
+            delay: 1000,
+            callback: this.spawnEnemy,
+            callbackScope: this,
+            loop: true
+        });
+
+        // Camera follow
+        this.cameras.main.startFollow(player);
+    }
+
+    update() {
+        if (gameOver) return;
+
+        // Player movement
+        let vx = 0, vy = 0;
+        if (cursors.left.isDown) vx = -1;
+        if (cursors.right.isDown) vx = 1;
+        if (cursors.up.isDown) vy = -1;
+        if (cursors.down.isDown) vy = 1;
+
+        if (vx !== 0 || vy !== 0) {
+            const norm = Math.sqrt(vx * vx + vy * vy);
+            player.setVelocity(
+                (vx / norm) * gameState.playerSpeed,
+                (vy / norm) * gameState.playerSpeed
+            );
+        } else {
+            player.setVelocity(0, 0);
+        }
+
+        // Auto-fire at nearest enemy
+        if (this.time.now > (player.lastFired || 0) + 500) {
+            this.fireProjectile();
+            player.lastFired = this.time.now;
+        }
+
+        // Move enemies toward player
+        enemies.children.each(enemy => {
+            this.physics.moveToObject(enemy, player, 100);
+        });
+
+        // Update HUD
+        this.updateHUD();
+
+        // Update debug overlay
+        if (debugMode) this.updateDebug();
+    }
+
+    fireProjectile() {
+        const angle = Math.PI * 2 / gameState.projectileCount;
+        for (let i = 0; i < gameState.projectileCount; i++) {
+            const projectile = projectiles.create(player.x, player.y, 'projectile');
+            const rotation = i * angle;
+            projectile.setVelocity(
+                Math.cos(rotation) * 300,
+                Math.sin(rotation) * 300
+            );
+            this.time.addEvent({
+                delay: 2000,
+                callback: () => projectile.destroy()
+            });
+        }
+    }
+
+    spawnEnemy() {
+        const radius = 400;
+        const angle = Math.random() * Math.PI * 2;
+        const x = player.x + Math.cos(angle) * radius;
+        const y = player.y + Math.sin(angle) * radius;
+        
+        const enemy = enemies.create(x, y, 'enemy');
+        enemy.health = 30;
+        enemy.setCollideWorldBounds(true);
+    }
+
+    hitEnemy(projectile, enemy) {
+        projectile.destroy();
+        enemy.health -= gameState.damage;
+        
+        if (enemy.health <= 0) {
+            enemy.destroy();
+            this.spawnXP(enemy.x, enemy.y);
+            if (Math.random() < 0.3) this.spawnCoin(enemy.x, enemy.y);
+        }
+    }
+
+    hitPlayer(player, enemy) {
+        gameState.playerHealth -= 10;
+        if (gameState.playerHealth <= 0) {
+            gameOver = true;
+            this.scene.pause();
+        }
+    }
+
+    spawnXP(x, y) {
+        const xp = xpOrbs.create(x, y, 'xp');
+        xp.value = 10;
+    }
+
+    spawnCoin(x, y) {
+        const coin = coins.create(x, y, 'coin');
+        coin.value = 1;
+    }
+
+    collectXP(player, xp) {
+        gameState.experience += xp.value;
+        xp.destroy();
+        
+        // Level up check
+        const nextLevel = gameState.level * 100;
+        if (gameState.experience >= nextLevel) {
+            gameState.level++;
+            document.getElementById('upgradeOverlay').style.display = 'flex';
+            this.scene.pause();
+        }
+    }
+
+    collectCoin(player, coin) {
+        gameState.coins += coin.value;
+        coin.destroy();
+    }
+
+    updateHUD() {
+        document.getElementById('hud').innerHTML = `
+            Health: ${gameState.playerHealth}/${gameState.maxHealth} | 
+            Level: ${gameState.level} | 
+            XP: ${gameState.experience} | 
+            Coins: ${gameState.coins}
+        `;
+    }
+
+    updateDebug() {
+        document.getElementById('debugOverlay').innerHTML = `
+            FPS: ${Math.round(this.game.loop.actualFps)}
+            Enemies: ${enemies.countActive()}
+            Projectiles: ${projectiles.countActive()}
+            Player pos: (${Math.round(player.x)}, ${Math.round(player.y)})
+        `;
+    }
+}
+
+// Game configuration
+const config = {
+    type: Phaser.AUTO,
+    parent: 'gameContainer',
+    width: 800,
+    height: 600,
+    physics: {
+        default: 'arcade',
+        arcade: {
+            debug: false
+        }
+    },
+    scene: MainScene
+};
+
+// Create game instance
+const game = new Phaser.Game(config);
+
+// UI Functions
 function toggleDebug() {
     debugMode = !debugMode;
-    let debugOverlay = document.getElementById('debugOverlay');
-    debugOverlay.style.display = debugMode ? 'block' : 'none';
+    document.getElementById('debugOverlay').style.display = debugMode ? 'block' : 'none';
+}
+
+function chooseUpgrade(type) {
+    switch(type) {
+        case 'damage':
+            gameState.damage *= 1.1;
+            break;
+        case 'speed':
+            gameState.playerSpeed *= 1.05;
+            break;
+        case 'multishot':
+            gameState.projectileCount++;
+            break;
+    }
+    document.getElementById('upgradeOverlay').style.display = 'none';
+    currentScene.scene.resume();
+}
+
+function openShop() {
+    document.getElementById('coinCount').textContent = gameState.coins;
+    document.getElementById('shopOverlay').style.display = 'flex';
+    currentScene.scene.pause();
+}
+
+function closeShop() {
+    document.getElementById('shopOverlay').style.display = 'none';
+    currentScene.scene.resume();
+}
+
+function buyItem(type) {
+    let cost = type === 'health' ? 10 : 15;
+    if (gameState.coins < cost) return;
     
-    // Toggle physics debug
-    if (currentScene) {
-        currentScene.physics.world.drawDebug = debugMode;
-        currentScene.physics.world.debugGraphic.clear();
+    gameState.coins -= cost;
+    if (type === 'health') {
+        gameState.maxHealth += 20;
+        gameState.playerHealth = gameState.maxHealth;
+    } else if (type === 'speed') {
+        gameState.playerSpeed *= 1.05;
+    }
+    document.getElementById('coinCount').textContent = gameState.coins;
+}
+
+function saveGame() {
+    localStorage.setItem('survivorGame', JSON.stringify(gameState));
+    alert('Game saved!');
+}
+
+function loadGame() {
+    const saved = localStorage.getItem('survivorGame');
+    if (saved) {
+        Object.assign(gameState, JSON.parse(saved));
+        currentScene.scene.restart();
     }
 }
 
-function updateDebugOverlay() {
-    if (!debugMode) return;
-    
-    let debugInfo = {
-        FPS: Math.round(currentScene.game.loop.actualFps),
-        Objects: {
-            Enemies: enemies?.countActive() || 0,
-            Projectiles: projectiles?.countActive() || 0,
-            XP_Orbs: xpOrbs?.countActive() || 0,
-            Coins: coins?.countActive() || 0
-        },
-        Player: {
-            Position: `(${Math.round(player?.x || 0)}, ${Math.round(player?.y || 0)})`,
-            Velocity: `(${Math.round(player?.body?.velocity?.x || 0)}, ${Math.round(player?.body?.velocity?.y || 0)})`
-        },
-        Memory: Math.round(performance.memory?.usedJSHeapSize / 1048576) + 'MB' // Convert to MB
+function restartGame() {
+    gameState = {
+        playerHealth: 100,
+        maxHealth: 100,
+        playerSpeed: 200,
+        experience: 0,
+        level: 1,
+        coins: 0,
+        damage: 10,
+        projectileCount: 1
     };
-    
-    document.getElementById('debugOverlay').innerHTML = 
-        `<pre>${JSON.stringify(debugInfo, null, 2)}</pre>`;
+    gameOver = false;
+    currentScene.scene.restart();
 }
-
-// Optimized update functions
-const updatePlayerMovement = (player, cursors, wasd, speed) => {
-    let vx = 0, vy = 0;
-    
-    // Combine keyboard inputs
-    if (cursors.left.isDown || wasd.A.isDown) vx -= 1;
-    if (cursors.right.isDown || wasd.D.isDown) vx += 1;
-    if (cursors.up.isDown || wasd.W.isDown) vy -= 1;
-    if (cursors.down.isDown || wasd.S.isDown) vy += 1;
-    
-    // Normalize and apply speed
-    if (vx !== 0 || vy !== 0) {
-        const norm = Math.sqrt(vx * vx + vy * vy);
-        vx = (vx / norm) * speed;
-        vy = (vy / norm) * speed;
-    }
-    
-    player.setVelocity(vx, vy);
-};
-
-const updateProjectiles = (time, projectiles, lifetime) => {
-    projectiles.children.each(proj => {
-        if (time - proj.creationTime > lifetime || proj.body.speed < 1) {
-            if (proj.onDestroy) proj.onDestroy(proj);
-            proj.destroy();
-        }
-    });
-};
-
-const updateCollectibles = (player, items, suckRange, onCollect) => {
-    items.children.each(item => {
-        const dx = player.x - item.x;
-        const dy = player.y - item.y;
-        const distSq = dx * dx + dy * dy;
-        
-        if (distSq < 100) { // 10^2 for collection radius
-            onCollect(player, item);
-        } else if (distSq < suckRange * suckRange) {
-            const dist = Math.sqrt(distSq) || 1;
-            const speed = item.suckSpeed || 30;
-            item.setVelocity((dx/dist) * speed, (dy/dist) * speed);
-        } else {
-            item.setVelocity(0, 0);
-        }
-    });
-};
-
-function enemyHitPlayer(playerObj, enemy) {
-    // Apply damage to player
-    player.health -= 20;
-    
-    // Visual feedback
-    showHitIndicator();
-    spawnEffectPhaser.call(currentScene, player.x, player.y, 'enemy');
-    
-    // Check for death
-    if (player.health <= 0) {
-        player.lives -= 1;
-        if (player.lives > 0) {
-            // Respawn with full health
-            player.health = gameState.playerHealth;
-            // Grant brief invulnerability
-            player.invulnerable = true;
-            setTimeout(() => { player.invulnerable = false; }, 2000);
-        } else {
-            // Game Over
-            gamePaused = true;
-            document.getElementById('finalExp').innerText = experience;
-            document.getElementById('gameOverOverlay').style.display = 'block';
-        }
-    }
-    
-    // Knockback effect
-    let angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
-    player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-}
+</script>
+</body>
+</html>
