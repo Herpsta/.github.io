@@ -91,7 +91,7 @@
 </div>
 
 <script>
-// Game state
+// Game state and global variables
 let gameState = {
     playerHealth: 100,
     maxHealth: 100,
@@ -104,8 +104,12 @@ let gameState = {
 };
 
 // Global variables
-let player, projectiles, enemies, xpOrbs, coins;
-let cursors, wasd; // Declare wasd globally
+let player;
+let projectiles;
+let enemies;
+let xpOrbs;
+let coins;
+let wasd;
 let gameOver = false;
 let debugMode = false;
 let currentScene;
