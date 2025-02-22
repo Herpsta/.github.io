@@ -28,7 +28,6 @@ class WaveSystem {
     startWave() {
         this.isWaveActive = true;
         this.enemiesRemaining = this.enemiesPerWave;
-        this.scene.sounds.wave.play();
         this.displayWaveMessage();
         this.spawnWaveEnemies();
     }
@@ -217,8 +216,6 @@ class PowerupSystem {
         });
 
         this.activeEffects.set(type, { timer, revert: revertFunction });
-        this.scene.sounds.powerup.play();
-        this.scene.particles.powerup.emitParticleAt(powerup.x, powerup.y, 15);
         this.displayPowerupMessage(powerupConfig.name);
         
         powerup.destroy();
@@ -352,6 +349,7 @@ class SkillTree {
         
         this.menuContainer.add(closeButton);
     }
+
     hideSkillTreeMenu() {
         if (this.menuBackground) {
             this.menuBackground.destroy();
@@ -404,24 +402,19 @@ class SkillTree {
     }
 }
 
-    // Main Scene
+// Main Scene
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
     }
 
     preload() {
-        this.load.image('player', 'https://labs.phaser.io/assets/sprites/player.png');
-        this.load.image('enemy', 'https://labs.phaser.io/assets/sprites/enemy.png');
-        this.load.image('projectile', 'https://labs.phaser.io/assets/sprites/projectile.png');
-        this.load.image('powerup', 'https://labs.phaser.io/assets/sprites/powerup.png');
-        this.load.image('particle', 'https://labs.phaser.io/assets/particles/blue.png');
-
-        this.load.audio('shoot', 'https://labs.phaser.io/assets/audio/shoot.wav');
-        this.load.audio('hit', 'https://labs.phaser.io/assets/audio/hit.wav');
-        this.load.audio('pickup', 'https://labs.phaser.io/assets/audio/pickup.wav');
-        this.load.audio('wave', 'https://labs.phaser.io/assets/audio/wave.wav');
-        this.load.audio('powerup', 'https://labs.phaser.io/assets/audio/powerup.wav');
+        // Update these paths to match your repository structure
+        this.load.image('player', 'assets/player.png');
+        this.load.image('enemy', 'assets/enemy.png');
+        this.load.image('projectile', 'assets/projectile.png');
+        this.load.image('powerup', 'assets/powerup.png');
+        this.load.image('particle', 'assets/particle.png');
     }
 
     create() {
@@ -430,12 +423,13 @@ class MainScene extends Phaser.Scene {
         this.powerupSystem = new PowerupSystem(this);
         this.skillTree = new SkillTree(this);
 
+        // Initialize empty sound objects to prevent errors
         this.sounds = {
-            shoot: this.sound.add('shoot', { volume: 0.5 }),
-            hit: this.sound.add('hit', { volume: 0.3 }),
-            pickup: this.sound.add('pickup', { volume: 0.4 }),
-            wave: this.sound.add('wave', { volume: 0.6 }),
-            powerup: this.sound.add('powerup', { volume: 0.5 })
+            shoot: { play: () => {} },
+            hit: { play: () => {} },
+            pickup: { play: () => {} },
+            wave: { play: () => {} },
+            powerup: { play: () => {} }
         };
 
         this.createPlayer();
@@ -549,8 +543,6 @@ class MainScene extends Phaser.Scene {
         
         const velocity = this.physics.velocityFromRotation(angle, this.player.stats.projectileSpeed);
         projectile.setVelocity(velocity.x, velocity.y);
-        
-        this.sounds.shoot.play();
     }
 
     updateEnemies() {
@@ -573,7 +565,6 @@ class MainScene extends Phaser.Scene {
         enemy.setData('health', health);
 
         this.particles.hit.emitParticleAt(enemy.x, enemy.y, 10);
-        this.sounds.hit.play();
 
         if (health <= 0) {
             this.killEnemy(enemy);
@@ -591,6 +582,21 @@ class MainScene extends Phaser.Scene {
 
         if (this.waveSystem.enemiesRemaining <= 0) {
             this.waveSystem.endWave();
+        }
+
+        // Check achievements
+        this.achievements.checkAndAward('killCount', gameState.kills);
+    }
+
+    collectPowerup(player, powerup) {
+        this.powerupSystem.applyPowerup(player, powerup);
+    }
+
+    playerHit(player, enemy) {
+        // Implement player damage logic here
+        gameState.playerHealth -= 10;
+        if (gameState.playerHealth <= 0) {
+            // Implement game over logic
         }
     }
 
