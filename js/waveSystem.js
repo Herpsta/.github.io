@@ -27,7 +27,9 @@ class WaveSystem {
 
     spawnEnemy(config) {
         const spawnPoint = this.getRandomSpawnPoint();
+        console.log('Spawning enemy at:', spawnPoint);
         const enemy = this.scene.enemies.create(spawnPoint.x, spawnPoint.y, 'enemy');
+        console.log('Enemy created:', enemy);
         enemy.setData('health', config.health);
         enemy.setData('speed', config.speed);
         enemy.setCollideWorldBounds(true);
