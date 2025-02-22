@@ -1,702 +1,131 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Infinite Survivor Game – Phaser Edition</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+    <title>Wave Survival Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     <style>
-        body { margin: 0; background: #111; }
-        #gameContainer { position: relative; }
-        canvas { display: block; }
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
+        body {
+            margin: 0;
+            background: #2c3e50;
+            display: flex;
             flex-direction: column;
+            align-items: center;
             font-family: Arial, sans-serif;
             color: white;
-            z-index: 10;
         }
-        .button {
-            margin: 10px;
-            padding: 10px 20px;
-            background: #444;
-            border: none;
-            color: white;
-            cursor: pointer;
+
+        #game-container {
+            margin-top: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
         }
-        .button:hover { background: #666; }
-        #gameControls {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 20;
-        }
+
         #hud {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 30;
             color: white;
-            font-family: Arial, sans-serif;
+            padding: 15px;
+            margin: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            font-size: 16px;
+            min-width: 600px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
         }
-        #debugOverlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            background: rgba(0,0,0,0.7);
-            color: #0f0;
-            padding: 5px;
+
+        .controls-container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px;
+            max-width: 600px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls-container h2 {
+            margin-top: 0;
+            color: #3498db;
+            text-align: center;
+        }
+
+        .controls-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .controls-list li {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 4px;
+        }
+
+        .key {
+            background: #3498db;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 10px;
             font-family: monospace;
-            font-size: 12px;
-            z-index: 40;
-            display: none;
+        }
+
+        .game-title {
+            font-size: 32px;
+            color: #3498db;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            margin: 20px 0;
+        }
+
+        .footer {
+            margin: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #95a5a6;
         }
     </style>
 </head>
 <body>
-<div id="gameContainer">
-    <div id="gameControls">
-        <button class="button" onclick="restartGame()">Restart</button>
-        <button class="button" onclick="saveGame()">Save Game</button>
-        <button class="button" onclick="loadGame()">Load Game</button>
-        <button class="button" onclick="openShop()">Shop</button>
-        <button class="button" onclick="openSettings()">Settings</button>
-        <button class="button" onclick="toggleDebug()">Debug</button>
+    <h1 class="game-title">Wave Survival Game</h1>
+    
+    <div id="hud">
+        Loading game stats...
     </div>
-    <div id="hud"></div>
-    <div id="debugOverlay"></div>
+    
+    <div id="game-container"></div>
+    
+    <div class="controls-container">
+        <h2>How to Play</h2>
+        <ul class="controls-list">
+            <li><span class="key">↑↓←→</span> Move your character</li>
+            <li><span class="key">SPACE</span> Shoot (aims toward mouse)</li>
+            <li><span class="key">T</span> Open/Close Skill Tree</li>
+        </ul>
 
-    <div id="upgradeOverlay" class="overlay">
-        <h1>Level Up!</h1>
-        <button class="button" onclick="chooseUpgrade('damage')">Increase Damage (+10%)</button>
-        <button class="button" onclick="chooseUpgrade('speed')">Increase Speed (+5%)</button>
-        <button class="button" onclick="chooseUpgrade('multishot')">Add Projectile</button>
+        <h2>Game Tips</h2>
+        <ul class="controls-list">
+            <li>Defeat enemies to gain XP and level up</li>
+            <li>Collect power-ups to gain temporary bonuses</li>
+            <li>Survive waves to earn achievements and coins</li>
+            <li>Use skill points to upgrade your character</li>
+        </ul>
+
+        <h2>Power-ups</h2>
+        <ul class="controls-list">
+            <li>🟡 Yellow: Speed Boost</li>
+            <li>🔴 Red: Rapid Fire</li>
+            <li>🟠 Orange: Damage Boost</li>
+        </ul>
     </div>
 
-    <div id="shopOverlay" class="overlay">
-        <h1>Shop</h1>
-        <p>Coins: <span id="coinCount">0</span></p>
-        <button class="button" onclick="buyItem('health')">+20 Max Health (10 coins)</button>
-        <button class="button" onclick="buyItem('speed')">+5% Speed (15 coins)</button>
-        <button class="button" onclick="closeShop()">Close</button>
+    <div class="footer">
+        © 2024 Wave Survival Game | Press F11 for fullscreen
     </div>
-</div>
 
-<script>
-// Game state and global variables
-let gameState = {
-    playerHealth: 100,
-    maxHealth: 100,
-    playerSpeed: 200,
-    experience: 0,
-    level: 1,
-    coins: 0,
-    damage: 10,
-    projectileCount: 1
-};
-
-// Global variables
-let player;
-let projectiles;
-let enemies;
-let xpOrbs;
-let coins;
-let wasd;
-let gameOver = false;
-let debugMode = false;
-let currentScene;
-
-class MainScene extends Phaser.Scene {
-    constructor() {
-        super({ key: 'MainScene' });
-    }
-
-    init() {
-        // Initialize audio context after user interaction
-        this.sound.pauseOnBlur = false;
-        this.sound.once('unlocked', () => {
-            console.log('Audio unlocked');
-        });
-    }
-
-    preload() {
-        // Generate textures
-        let graphics = this.add.graphics();
-        
-        // Player
-        graphics.fillStyle(0x00ff00);
-        graphics.fillCircle(16, 16, 16);
-        graphics.generateTexture('player', 32, 32);
-        graphics.clear();
-        
-        // Enemy types
-        // Basic enemy (red circle)
-        graphics.fillStyle(0xff0000);
-        graphics.fillCircle(12, 12, 12);
-        graphics.generateTexture('enemy-basic', 24, 24);
-        graphics.clear();
-        
-        // Fast enemy (yellow triangle)
-        graphics.fillStyle(0xffff00);
-        graphics.beginPath();
-        graphics.moveTo(12, 0);
-        graphics.lineTo(24, 24);
-        graphics.lineTo(0, 24);
-        graphics.closePath();
-        graphics.fill();
-        graphics.generateTexture('enemy-fast', 24, 24);
-        graphics.clear();
-        
-        // Tank enemy (blue square)
-        graphics.fillStyle(0x0000ff);
-        graphics.fillRect(0, 0, 24, 24);
-        graphics.generateTexture('enemy-tank', 24, 24);
-        graphics.clear();
-        
-        // Shooter enemy (purple diamond)
-        graphics.fillStyle(0xff00ff);
-        graphics.beginPath();
-        graphics.moveTo(12, 0);
-        graphics.lineTo(24, 12);
-        graphics.lineTo(12, 24);
-        graphics.lineTo(0, 12);
-        graphics.closePath();
-        graphics.fill();
-        graphics.generateTexture('enemy-shooter', 24, 24);
-
-        // Projectile
-        graphics.fillStyle(0xffff00);
-        graphics.fillCircle(4, 4, 4);
-        graphics.generateTexture('projectile', 8, 8);
-        graphics.clear();
-
-        // Enemy
-        graphics.fillStyle(0xff0000);
-        graphics.fillCircle(12, 12, 12);
-        graphics.generateTexture('enemy', 24, 24);
-        graphics.clear();
-
-        // XP orb
-        graphics.fillStyle(0x0000ff);
-        graphics.fillCircle(4, 4, 4);
-        graphics.generateTexture('xp', 8, 8);
-        graphics.clear();
-
-        // Coin
-        graphics.fillStyle(0xffd700);
-        graphics.fillCircle(4, 4, 4);
-        graphics.generateTexture('coin', 8, 8);
-        graphics.clear();
-    }
-
-    create() {
-        currentScene = this;
-        
-        // Remove world bounds for infinite map
-        this.physics.world.setBounds(-10000, -10000, 20000, 20000);
-        
-        // Create groups
-        projectiles = this.physics.add.group();
-        enemies = this.physics.add.group();
-        xpOrbs = this.physics.add.group();
-        coins = this.physics.add.group();
-        
-        // Add background grid for visual reference of movement
-        this.add.grid(0, 0, 20000, 20000, 64, 64, 0x222222, 0, 0x333333);
-
-        // Create player
-        player = this.physics.add.sprite(400, 300, 'player');
-        player.setCollideWorldBounds(false); // Allow infinite movement
-        
-        // Setup controls - WASD
-        wasd = {
-            up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-            down: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-            left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-            right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
-        };
-
-        // Set up physics collisions
-        this.physics.add.overlap(projectiles, enemies, this.hitEnemy, null, this);
-        this.physics.add.overlap(player, enemies, this.hitPlayer, null, this);
-        this.physics.add.overlap(player, xpOrbs, this.collectXP, null, this);
-        this.physics.add.overlap(player, coins, this.collectCoin, null, this);
-
-        // Camera follow
-        this.cameras.main.startFollow(player, true, 0.1, 0.1);
-        
-        // Enemy spawn timer
-        this.time.addEvent({
-            delay: 1000,
-            callback: this.spawnEnemy,
-            callbackScope: this,
-            loop: true
-        });
-    }
-    
-    // Function to get nearest enemy
-    findNearestEnemy(x, y) {
-        let nearestEnemy = null;
-        let shortestDistance = Infinity;
-        
-        enemies.getChildren().forEach(enemy => {
-            const distance = Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y);
-            if (distance < shortestDistance) {
-                shortestDistance = distance;
-                nearestEnemy = enemy;
-            }
-        });
-        
-        return nearestEnemy;
-    }
-
-    fireProjectile() {
-        const target = this.findNearestEnemy(player.x, player.y);
-        
-        if (target) {
-            for (let i = 0; i < gameState.projectileCount; i++) {
-                const projectile = projectiles.create(player.x, player.y, 'projectile');
-                const angle = Phaser.Math.Angle.Between(player.x, player.y, target.x, target.y);
-                
-                // Add spread for multiple projectiles
-                const spread = (i - (gameState.projectileCount - 1) / 2) * 0.2;
-                const finalAngle = angle + spread;
-                
-                // Set velocity based on angle
-                const speed = 300;
-                projectile.setVelocity(
-                    Math.cos(finalAngle) * speed,
-                    Math.sin(finalAngle) * speed
-                );
-                
-                // Add slight homing effect
-                projectile.update = () => {
-                    if (target.active) {
-                        const currentAngle = Phaser.Math.Angle.Between(
-                            projectile.x, projectile.y,
-                            target.x, target.y
-                        );
-                        const newVelocity = this.physics.velocityFromAngle(
-                            Phaser.Math.RadToDeg(currentAngle),
-                            speed
-                        );
-                        projectile.setVelocity(newVelocity.x, newVelocity.y);
-                    }
-                };
-                
-                // Destroy after time
-                this.time.delayedCall(2000, () => {
-                    if (projectile.active) projectile.destroy();
-                });
-            }
-        }
-    }
-
-    update() {
-        if (gameOver) return;
-
-        // Player movement - WASD
-        let vx = 0, vy = 0;
-        
-        if (wasd.left.isDown) vx -= 1;
-        if (wasd.right.isDown) vx += 1;
-        if (wasd.up.isDown) vy -= 1;
-        if (wasd.down.isDown) vy += 1;
-
-        if (vx !== 0 || vy !== 0) {
-            const norm = Math.sqrt(vx * vx + vy * vy);
-            player.setVelocity(
-                (vx / norm) * gameState.playerSpeed,
-                (vy / norm) * gameState.playerSpeed
-            );
-        } else {
-            player.setVelocity(0, 0);
-        }
-
-        // Auto-fire at nearest enemy
-        if (this.time.now > (player.lastFired || 0) + 500) {
-            this.fireProjectile();
-            player.lastFired = this.time.now;
-        }
-
-        // Create player
-        player = this.physics.add.sprite(400, 300, 'player');
-        player.setCollideWorldBounds(true);
-
-        // Setup controls - WASD and arrow keys
-        cursors = this.input.keyboard.createCursorKeys();
-        wasd = this.input.keyboard.addKeys({
-            up: Phaser.Input.Keyboard.KeyCodes.W,
-            down: Phaser.Input.Keyboard.KeyCodes.S,
-            left: Phaser.Input.Keyboard.KeyCodes.A,
-            right: Phaser.Input.Keyboard.KeyCodes.D
-        });
-
-        // Collisions
-        this.physics.add.overlap(projectiles, enemies, this.hitEnemy, null, this);
-        this.physics.add.overlap(player, enemies, this.hitPlayer, null, this);
-        this.physics.add.overlap(player, xpOrbs, this.collectXP, null, this);
-        this.physics.add.overlap(player, coins, this.collectCoin, null, this);
-
-        // Enemy spawning
-        this.time.addEvent({
-            delay: 1000,
-            callback: this.spawnEnemy,
-            callbackScope: this,
-            loop: true
-        });
-
-        // Camera follow
-        this.cameras.main.startFollow(player);
-    }
-
-    update() {
-        if (gameOver) return;
-
-        // Player movement - WASD and arrow keys
-        let vx = 0, vy = 0;
-        if (cursors.left.isDown || wasd.left.isDown) vx = -1;
-        if (cursors.right.isDown || wasd.right.isDown) vx = 1;
-        if (cursors.up.isDown || wasd.up.isDown) vy = -1;
-        if (cursors.down.isDown || wasd.down.isDown) vy = 1;
-
-        if (vx !== 0 || vy !== 0) {
-            const norm = Math.sqrt(vx * vx + vy * vy);
-            player.setVelocity(
-                (vx / norm) * gameState.playerSpeed,
-                (vy / norm) * gameState.playerSpeed
-            );
-        } else {
-            player.setVelocity(0, 0);
-        }
-
-        // Auto-fire at nearest enemy
-        if (this.time.now > (player.lastFired || 0) + 500) {
-            this.fireProjectile();
-            player.lastFired = this.time.now;
-        }
-
-        // Move enemies toward player
-        enemies.children.each(enemy => {
-            this.physics.moveToObject(enemy, player, 100);
-        });
-
-        // Update HUD
-        this.updateHUD();
-
-        // Update debug overlay
-        if (debugMode) this.updateDebug();
-    }
-
-    fireProjectile() {
-        const angle = Math.PI * 2 / gameState.projectileCount;
-        for (let i = 0; i < gameState.projectileCount; i++) {
-            const projectile = projectiles.create(player.x, player.y, 'projectile');
-            const rotation = i * angle;
-            projectile.setVelocity(
-                Math.cos(rotation) * 300,
-                Math.sin(rotation) * 300
-            );
-            this.time.addEvent({
-                delay: 2000,
-                callback: () => projectile.destroy()
-            });
-        }
-    }
-
-    spawnEnemy() {
-        const radius = 400;
-        const angle = Math.random() * Math.PI * 2;
-        const x = player.x + Math.cos(angle) * radius;
-        const y = player.y + Math.sin(angle) * radius;
-        
-        // Random enemy type selection with different properties
-        const enemyTypes = [
-            {
-                type: 'basic',
-                health: 30,
-                speed: 100,
-                texture: 'enemy-basic',
-                xpValue: 10,
-                damage: 10
-            },
-            {
-                type: 'fast',
-                health: 15,
-                speed: 200,
-                texture: 'enemy-fast',
-                xpValue: 15,
-                damage: 5
-            },
-            {
-                type: 'tank',
-                health: 100,
-                speed: 50,
-                texture: 'enemy-tank',
-                xpValue: 25,
-                damage: 20
-            },
-            {
-                type: 'shooter',
-                health: 40,
-                speed: 75,
-                texture: 'enemy-shooter',
-                xpValue: 20,
-                damage: 15,
-                canShoot: true,
-                shootInterval: 2000
-            }
-        ];
-        
-        // Select random enemy type
-        const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-        
-        // Create enemy with properties
-        const enemy = enemies.create(x, y, enemyType.texture);
-        Object.assign(enemy, enemyType);
-        
-        // Special behavior for shooter type
-        if (enemy.canShoot) {
-            this.time.addEvent({
-                delay: enemy.shootInterval,
-                callback: () => this.enemyShoot(enemy),
-                loop: true
-            });
-        }
-        
-        // Add movement pattern based on type
-        if (enemy.type === 'fast') {
-            // Fast enemies move erratically
-            this.time.addEvent({
-                delay: 1000,
-                callback: () => {
-                    if (enemy.active) {
-                        const randomAngle = Math.random() * Math.PI * 2;
-                        enemy.moveAngle = randomAngle;
-                    }
-                },
-                loop: true
-            });
-        }
-    }
-    
-    enemyShoot(enemy) {
-        if (!enemy.active || gameOver) return;
-        
-        const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
-        const velocity = this.physics.velocityFromRotation(angle, 150);
-        
-        const bullet = this.physics.add.sprite(enemy.x, enemy.y, 'projectile');
-        bullet.setTint(0xff00ff);
-        bullet.setVelocity(velocity.x, velocity.y);
-        
-        // Set bullet properties
-        bullet.damage = enemy.damage;
-        bullet.isEnemyBullet = true;
-        
-        // Add collision with player
-        this.physics.add.overlap(bullet, player, this.bulletHitPlayer, null, this);
-        
-        // Destroy bullet after time
-        this.time.delayedCall(2000, () => {
-            if (bullet.active) bullet.destroy();
-        });
-    }
-    
-    bulletHitPlayer(player, bullet) {
-        if (bullet.isEnemyBullet) {
-            gameState.playerHealth -= bullet.damage;
-            bullet.destroy();
-            
-            // Visual feedback
-            player.setTint(0xff0000);
-            this.time.delayedCall(100, () => {
-                player.clearTint();
-            });
-            
-            if (gameState.playerHealth <= 0) {
-                gameOver = true;
-                this.scene.pause();
-            }
-        }
-    }
-
-    hitEnemy(projectile, enemy) {
-        projectile.destroy();
-        enemy.health -= gameState.damage;
-        
-        if (enemy.health <= 0) {
-            enemy.destroy();
-            this.spawnXP(enemy.x, enemy.y);
-            if (Math.random() < 0.3) this.spawnCoin(enemy.x, enemy.y);
-        }
-    }
-
-    hitPlayer(player, enemy) {
-        gameState.playerHealth -= 10;
-        if (gameState.playerHealth <= 0) {
-            gameOver = true;
-            this.scene.pause();
-        }
-    }
-
-    spawnXP(x, y) {
-        const xp = xpOrbs.create(x, y, 'xp');
-        xp.value = 10;
-    }
-
-    spawnCoin(x, y) {
-        const coin = coins.create(x, y, 'coin');
-        coin.value = 1;
-    }
-
-    collectXP(player, xp) {
-        gameState.experience += xp.value;
-        xp.destroy();
-        
-        // Level up check
-        const nextLevel = gameState.level * 100;
-        if (gameState.experience >= nextLevel) {
-            gameState.level++;
-            document.getElementById('upgradeOverlay').style.display = 'flex';
-            this.scene.pause();
-        }
-    }
-
-    collectCoin(player, coin) {
-        gameState.coins += coin.value;
-        coin.destroy();
-    }
-
-    updateHUD() {
-        document.getElementById('hud').innerHTML = `
-            Health: ${gameState.playerHealth}/${gameState.maxHealth} | 
-            Level: ${gameState.level} | 
-            XP: ${gameState.experience} | 
-            Coins: ${gameState.coins}
-        `;
-    }
-
-    updateDebug() {
-        document.getElementById('debugOverlay').innerHTML = `
-            FPS: ${Math.round(this.game.loop.actualFps)}
-            Enemies: ${enemies.countActive()}
-            Projectiles: ${projectiles.countActive()}
-            Player pos: (${Math.round(player.x)}, ${Math.round(player.y)})
-        `;
-    }
-}
-
-// Game configuration
-const config = {
-    type: Phaser.AUTO,
-    parent: 'gameContainer',
-    width: 800,
-    height: 600,
-    physics: {
-        default: 'arcade',
-        arcade: {
-            debug: false,
-            gravity: { x: 0, y: 0 }
-        }
-    },
-    scene: MainScene,
-    audio: {
-        disableWebAudio: false
-    }
-};
-
-// Initialize game after user interaction
-document.addEventListener('click', function initGame() {
-    const game = new Phaser.Game(config);
-    document.removeEventListener('click', initGame);
-}, { once: true });
-
-// Show click to start message
-document.getElementById('hud').innerHTML = 'Click anywhere to start game';
-
-// UI Functions
-function toggleDebug() {
-    debugMode = !debugMode;
-    document.getElementById('debugOverlay').style.display = debugMode ? 'block' : 'none';
-}
-
-function chooseUpgrade(type) {
-    switch(type) {
-        case 'damage':
-            gameState.damage *= 1.1;
-            break;
-        case 'speed':
-            gameState.playerSpeed *= 1.05;
-            break;
-        case 'multishot':
-            gameState.projectileCount++;
-            break;
-    }
-    document.getElementById('upgradeOverlay').style.display = 'none';
-    currentScene.scene.resume();
-}
-
-function openShop() {
-    document.getElementById('coinCount').textContent = gameState.coins;
-    document.getElementById('shopOverlay').style.display = 'flex';
-    currentScene.scene.pause();
-}
-
-function closeShop() {
-    document.getElementById('shopOverlay').style.display = 'none';
-    currentScene.scene.resume();
-}
-
-function buyItem(type) {
-    let cost = type === 'health' ? 10 : 15;
-    if (gameState.coins < cost) return;
-    
-    gameState.coins -= cost;
-    if (type === 'health') {
-        gameState.maxHealth += 20;
-        gameState.playerHealth = gameState.maxHealth;
-    } else if (type === 'speed') {
-        gameState.playerSpeed *= 1.05;
-    }
-    document.getElementById('coinCount').textContent = gameState.coins;
-}
-
-function saveGame() {
-    localStorage.setItem('survivorGame', JSON.stringify(gameState));
-    alert('Game saved!');
-}
-
-function loadGame() {
-    const saved = localStorage.getItem('survivorGame');
-    if (saved) {
-        Object.assign(gameState, JSON.parse(saved));
-        currentScene.scene.restart();
-    }
-}
-
-function restartGame() {
-    gameState = {
-        playerHealth: 100,
-        maxHealth: 100,
-        playerSpeed: 200,
-        experience: 0,
-        level: 1,
-        coins: 0,
-        damage: 10,
-        projectileCount: 1
-    };
-    gameOver = false;
-    currentScene.scene.restart();
-}
-</script>
+    <!-- Game Scripts -->
+    <script src="waveSystem.js"></script>
+    <script src="achievementSystem.js"></script>
+    <script src="powerupSystem.js"></script>
+    <script src="skillTree.js"></script>
+    <script src="mainScene.js"></script>
+    <script src="game.js"></script>
 </body>
 </html>
