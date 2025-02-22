@@ -122,6 +122,41 @@ class MainScene extends Phaser.Scene {
         graphics.fillCircle(16, 16, 16);
         graphics.generateTexture('player', 32, 32);
         graphics.clear();
+        
+        // Enemy types
+        // Basic enemy (red circle)
+        graphics.fillStyle(0xff0000);
+        graphics.fillCircle(12, 12, 12);
+        graphics.generateTexture('enemy-basic', 24, 24);
+        graphics.clear();
+        
+        // Fast enemy (yellow triangle)
+        graphics.fillStyle(0xffff00);
+        graphics.beginPath();
+        graphics.moveTo(12, 0);
+        graphics.lineTo(24, 24);
+        graphics.lineTo(0, 24);
+        graphics.closePath();
+        graphics.fill();
+        graphics.generateTexture('enemy-fast', 24, 24);
+        graphics.clear();
+        
+        // Tank enemy (blue square)
+        graphics.fillStyle(0x0000ff);
+        graphics.fillRect(0, 0, 24, 24);
+        graphics.generateTexture('enemy-tank', 24, 24);
+        graphics.clear();
+        
+        // Shooter enemy (purple diamond)
+        graphics.fillStyle(0xff00ff);
+        graphics.beginPath();
+        graphics.moveTo(12, 0);
+        graphics.lineTo(24, 12);
+        graphics.lineTo(12, 24);
+        graphics.lineTo(0, 12);
+        graphics.closePath();
+        graphics.fill();
+        graphics.generateTexture('enemy-shooter', 24, 24);
 
         // Projectile
         graphics.fillStyle(0xffff00);
@@ -151,18 +186,30 @@ class MainScene extends Phaser.Scene {
     create() {
         currentScene = this;
         
+        // Remove world bounds for infinite map
+        this.physics.world.setBounds(-10000, -10000, 20000, 20000);
+        
         // Create groups
         projectiles = this.physics.add.group();
         enemies = this.physics.add.group();
         xpOrbs = this.physics.add.group();
         coins = this.physics.add.group();
+        
+        // Add background grid for visual reference of movement
+        this.add.grid(0, 0, 20000, 20000, 64, 64, 0x222222, 0, 0x333333);
 
         // Create player
         player = this.physics.add.sprite(400, 300, 'player');
         player.setCollideWorldBounds(true);
 
-        // Setup controls
+        // Setup controls - WASD and arrow keys
         cursors = this.input.keyboard.createCursorKeys();
+        wasd = this.input.keyboard.addKeys({
+            up: Phaser.Input.Keyboard.KeyCodes.W,
+            down: Phaser.Input.Keyboard.KeyCodes.S,
+            left: Phaser.Input.Keyboard.KeyCodes.A,
+            right: Phaser.Input.Keyboard.KeyCodes.D
+        });
 
         // Collisions
         this.physics.add.overlap(projectiles, enemies, this.hitEnemy, null, this);
@@ -185,12 +232,12 @@ class MainScene extends Phaser.Scene {
     update() {
         if (gameOver) return;
 
-        // Player movement
+        // Player movement - WASD and arrow keys
         let vx = 0, vy = 0;
-        if (cursors.left.isDown) vx = -1;
-        if (cursors.right.isDown) vx = 1;
-        if (cursors.up.isDown) vy = -1;
-        if (cursors.down.isDown) vy = 1;
+        if (cursors.left.isDown || wasd.left.isDown) vx = -1;
+        if (cursors.right.isDown || wasd.right.isDown) vx = 1;
+        if (cursors.up.isDown || wasd.up.isDown) vy = -1;
+        if (cursors.down.isDown || wasd.down.isDown) vy = 1;
 
         if (vx !== 0 || vy !== 0) {
             const norm = Math.sqrt(vx * vx + vy * vy);
@@ -242,9 +289,115 @@ class MainScene extends Phaser.Scene {
         const x = player.x + Math.cos(angle) * radius;
         const y = player.y + Math.sin(angle) * radius;
         
-        const enemy = enemies.create(x, y, 'enemy');
-        enemy.health = 30;
-        enemy.setCollideWorldBounds(true);
+        // Random enemy type selection with different properties
+        const enemyTypes = [
+            {
+                type: 'basic',
+                health: 30,
+                speed: 100,
+                texture: 'enemy-basic',
+                xpValue: 10,
+                damage: 10
+            },
+            {
+                type: 'fast',
+                health: 15,
+                speed: 200,
+                texture: 'enemy-fast',
+                xpValue: 15,
+                damage: 5
+            },
+            {
+                type: 'tank',
+                health: 100,
+                speed: 50,
+                texture: 'enemy-tank',
+                xpValue: 25,
+                damage: 20
+            },
+            {
+                type: 'shooter',
+                health: 40,
+                speed: 75,
+                texture: 'enemy-shooter',
+                xpValue: 20,
+                damage: 15,
+                canShoot: true,
+                shootInterval: 2000
+            }
+        ];
+        
+        // Select random enemy type
+        const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+        
+        // Create enemy with properties
+        const enemy = enemies.create(x, y, enemyType.texture);
+        Object.assign(enemy, enemyType);
+        
+        // Special behavior for shooter type
+        if (enemy.canShoot) {
+            this.time.addEvent({
+                delay: enemy.shootInterval,
+                callback: () => this.enemyShoot(enemy),
+                loop: true
+            });
+        }
+        
+        // Add movement pattern based on type
+        if (enemy.type === 'fast') {
+            // Fast enemies move erratically
+            this.time.addEvent({
+                delay: 1000,
+                callback: () => {
+                    if (enemy.active) {
+                        const randomAngle = Math.random() * Math.PI * 2;
+                        enemy.moveAngle = randomAngle;
+                    }
+                },
+                loop: true
+            });
+        }
+    }
+    
+    enemyShoot(enemy) {
+        if (!enemy.active || gameOver) return;
+        
+        const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
+        const velocity = this.physics.velocityFromRotation(angle, 150);
+        
+        const bullet = this.physics.add.sprite(enemy.x, enemy.y, 'projectile');
+        bullet.setTint(0xff00ff);
+        bullet.setVelocity(velocity.x, velocity.y);
+        
+        // Set bullet properties
+        bullet.damage = enemy.damage;
+        bullet.isEnemyBullet = true;
+        
+        // Add collision with player
+        this.physics.add.overlap(bullet, player, this.bulletHitPlayer, null, this);
+        
+        // Destroy bullet after time
+        this.time.delayedCall(2000, () => {
+            if (bullet.active) bullet.destroy();
+        });
+    }
+    
+    bulletHitPlayer(player, bullet) {
+        if (bullet.isEnemyBullet) {
+            gameState.playerHealth -= bullet.damage;
+            bullet.destroy();
+            
+            // Visual feedback
+            player.setTint(0xff0000);
+            this.time.delayedCall(100, () => {
+                player.clearTint();
+            });
+            
+            if (gameState.playerHealth <= 0) {
+                gameOver = true;
+                this.scene.pause();
+            }
+        }
     }
 
     hitEnemy(projectile, enemy) {
