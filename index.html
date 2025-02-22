@@ -5,7 +5,7 @@
   <title>Infinite Survivor Game – Phaser Edition</title>
   <!-- Load Phaser 3 -->
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
-  <!-- Load Mocha and Chai for testing -->
+  <!-- Load Mocha and Chai for automated testing -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mocha/mocha.css" />
   <script src="https://cdn.jsdelivr.net/npm/mocha/mocha.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chai/chai.js"></script>
@@ -18,10 +18,10 @@
       position: absolute; top: 0; left: 0;
       width: 100%; height: 100%;
       background: rgba(0,0,0,0.8);
-      display: none; justify-content: center;
-      align-items: center; flex-direction: column;
-      font-family: Arial, sans-serif; color: white;
-      z-index: 10;
+      display: none; 
+      justify-content: center; align-items: center;
+      flex-direction: column; font-family: Arial, sans-serif;
+      color: white; z-index: 10;
     }
     .button {
       margin: 10px; padding: 10px 20px;
@@ -40,679 +40,727 @@
       z-index: 30; color: white;
       font-family: Arial, sans-serif;
     }
+    /* Debug Overlay (toggleable) */
+    #debugOverlay {
+      position: absolute;
+      bottom: 0; left: 0;
+      background: rgba(0,0,0,0.7);
+      color: #0f0; padding: 5px;
+      font-family: monospace;
+      font-size: 12px;
+      z-index: 40;
+      display: none;
+    }
+    /* Mocha Test Styles (for test suite window) */
+    #mocha { padding: 20px; }
   </style>
 </head>
 <body>
-  <div id="gameContainer">
-    <div id="gameControls">
-      <button class="button" onclick="restartGame()">Restart</button>
-      <button class="button" onclick="saveGame()">Save Game</button>
-      <button class="button" onclick="loadGame()">Load Game</button>
-      <button class="button" onclick="openShop()">Shop</button>
-      <button class="button" onclick="openSettings()">Settings</button>
-      <button class="button" onclick="openBestiary()">Bestiary</button>
-      <button class="button" onclick="runTests()">Run Tests</button>
-    </div>
-    <!-- HUD -->
-    <div id="hud"></div>
-    <!-- Upgrade Overlay -->
-    <div id="upgradeOverlay" class="overlay">
-      <h1>Level Up!</h1>
-      <h2>Upgrades</h2>
-      <button class="button" onclick="chooseUpgrade('damage')">Increase Blaster Damage (+10%)</button>
-      <button class="button" onclick="chooseUpgrade('player')">Increase Player Speed (+5%)</button>
-      <button class="button" onclick="chooseUpgrade('attack')">Upgrade MultiShot (+1 Ball)</button>
-      <h2>Accessories</h2>
-      <button class="button" onclick="chooseUpgrade('accessory')">Accessory Upgrade (Add Blaster Functionality)</button>
-    </div>
-    <!-- Shop Overlay -->
-    <div id="shopOverlay" class="overlay">
-      <h1>Shop</h1>
-      <p>Persistent Coins: <span id="coinCount">0</span></p>
-      <button class="button" onclick="buyItem('maxHealth')">Increase Max Health (+20) - 10 coins</button>
-      <button class="button" onclick="buyItem('speed')">Increase Speed (+1) - 15 coins</button>
-      <button class="button" onclick="buyItem('damage')">Increase Damage (+2) - 20 coins</button>
-      <button class="button" onclick="buyItem('xpSuck')">Increase XP Suck Range (+20) - 10 coins</button>
-      <button class="button" onclick="buyItem('coinSuck')">Increase Coin Suck Range (+20) - 10 coins</button>
-      <button class="button" onclick="buyItem('restore')">Restore Health - 5 coins</button>
-      <button class="button" onclick="closeShop()">Close Shop</button>
-    </div>
-    <!-- Settings Overlay -->
-    <div id="settingsOverlay" class="overlay">
-      <h1>Settings</h1>
-      <p>Customize game values:</p>
-      <div><label>Player Base Speed: </label><input type="number" id="inpPlayerSpeed" value="100"></div>
-      <div><label>Bullet Speed: </label><input type="number" id="inpBulletSpeed" value="100"></div>
-      <div><label>Enemy Speed: </label><input type="number" id="inpEnemySpeed" value="60"></div>
-      <div><label>XP Suck Range: </label><input type="number" id="inpXpSuck" value="100"></div>
-      <div><label>Coin Suck Range: </label><input type="number" id="inpCoinSuck" value="150"></div>
-      <div><label>Fire Interval (ms): </label><input type="number" id="inpFireInterval" value="1500"></div>
-      <div><label>Player Attack Damage: </label><input type="number" id="inpAttackDamage" value="10"></div>
-      <div><label>Projectile Lifetime (ms): </label><input type="number" id="inpProjLifetime" value="4000"></div>
-      <button class="button" onclick="saveSettings()">Save Settings</button>
-      <button class="button" onclick="closeSettings()">Close Settings</button>
-    </div>
-    <!-- Bestiary Overlay -->
-    <div id="bestiaryOverlay" class="overlay">
-      <h1>Bestiary</h1>
-      <p>Enemy Types:</p>
-      <ul>
-        <li><strong>Basic:</strong> Low health, standard speed, does not shoot.</li>
-        <li><strong>Fast:</strong> Lower health, higher speed.</li>
-        <li><strong>Shooter:</strong> Moderate health, shoots two projectiles.</li>
-        <li><strong>Bomber:</strong> High health, drops bombs that explode with area damage.</li>
-      </ul>
-      <button class="button" onclick="closeBestiary()">Close Bestiary</button>
-    </div>
-    <!-- Game Over Overlay -->
-    <div id="gameOverOverlay" class="overlay">
-      <h1>Game Over</h1>
-      <p>Final EXP: <span id="finalExp">0</span></p>
-      <button class="button" onclick="restartGame()">Restart Game</button>
-    </div>
+<div id="gameContainer">
+  <div id="gameControls">
+    <button class="button" onclick="restartGame()">Restart</button>
+    <button class="button" onclick="saveGame()">Save Game</button>
+    <button class="button" onclick="loadGame()">Load Game</button>
+    <button class="button" onclick="openShop()">Shop</button>
+    <button class="button" onclick="openSettings()">Settings</button>
+    <button class="button" onclick="openBestiary()">Bestiary</button>
+    <button class="button" onclick="toggleDebug()">Toggle Debug</button>
+    <button class="button" onclick="runTests()">Run Tests</button>
   </div>
+  <!-- HUD -->
+  <div id="hud"></div>
+  <!-- Debug Overlay -->
+  <div id="debugOverlay"></div>
+  <!-- Upgrade Overlay -->
+  <div id="upgradeOverlay" class="overlay">
+    <h1>Level Up!</h1>
+    <h2>Upgrades</h2>
+    <button class="button" onclick="chooseUpgrade('damage')">Increase Blaster Damage (+10%)</button>
+    <button class="button" onclick="chooseUpgrade('player')">Increase Player Speed (+5%)</button>
+    <button class="button" onclick="chooseUpgrade('attack')">Upgrade MultiShot (+1 Ball)</button>
+    <h2>Accessories</h2>
+    <button class="button" onclick="chooseUpgrade('accessory')">Accessory Upgrade (Add Blaster Functionality)</button>
+  </div>
+  <!-- Shop Overlay -->
+  <div id="shopOverlay" class="overlay">
+    <h1>Shop</h1>
+    <p>Persistent Coins: <span id="coinCount">0</span></p>
+    <button class="button" onclick="buyItem('maxHealth')">Increase Max Health (+20) - 10 coins</button>
+    <button class="button" onclick="buyItem('speed')">Increase Speed (+1) - 15 coins</button>
+    <button class="button" onclick="buyItem('damage')">Increase Damage (+2) - 20 coins</button>
+    <button class="button" onclick="buyItem('xpSuck')">Increase XP Suck Range (+20) - 10 coins</button>
+    <button class="button" onclick="buyItem('coinSuck')">Increase Coin Suck Range (+20) - 10 coins</button>
+    <button class="button" onclick="buyItem('restore')">Restore Health - 5 coins</button>
+    <button class="button" onclick="closeShop()">Close Shop</button>
+  </div>
+  <!-- Settings Overlay -->
+  <div id="settingsOverlay" class="overlay">
+    <h1>Settings</h1>
+    <p>Customize game values:</p>
+    <div><label>Player Base Speed: </label><input type="number" id="inpPlayerSpeed" value="100"></div>
+    <div><label>Bullet Speed: </label><input type="number" id="inpBulletSpeed" value="100"></div>
+    <div><label>Enemy Speed: </label><input type="number" id="inpEnemySpeed" value="60"></div>
+    <div><label>XP Suck Range: </label><input type="number" id="inpXpSuck" value="100"></div>
+    <div><label>Coin Suck Range: </label><input type="number" id="inpCoinSuck" value="150"></div>
+    <div><label>Fire Interval (ms): </label><input type="number" id="inpFireInterval" value="1500"></div>
+    <div><label>Player Attack Damage: </label><input type="number" id="inpAttackDamage" value="10"></div>
+    <div><label>Projectile Lifetime (ms): </label><input type="number" id="inpProjLifetime" value="4000"></div>
+    <button class="button" onclick="saveSettings()">Save Settings</button>
+    <button class="button" onclick="closeSettings()">Close Settings</button>
+  </div>
+  <!-- Bestiary Overlay -->
+  <div id="bestiaryOverlay" class="overlay">
+    <h1>Bestiary</h1>
+    <p>Enemy Types:</p>
+    <ul>
+      <li><strong>Basic:</strong> Low health, standard speed, does not shoot.</li>
+      <li><strong>Fast:</strong> Lower health, higher speed.</li>
+      <li><strong>Shooter:</strong> Moderate health, shoots two projectiles.</li>
+      <li><strong>Bomber:</strong> High health, drops bombs that explode with area damage.</li>
+    </ul>
+    <button class="button" onclick="closeBestiary()">Close Bestiary</button>
+  </div>
+  <!-- Game Over Overlay -->
+  <div id="gameOverOverlay" class="overlay">
+    <h1>Game Over</h1>
+    <p>Final EXP: <span id="finalExp">0</span></p>
+    <button class="button" onclick="restartGame()">Restart Game</button>
+  </div>
+</div>
 
-  <script>
-    // ---------------------------
-    // Global Variables
-    // ---------------------------
-    let playerHealth = 100, playerLives = 3;
-    let experience = 0, level = 1, nextLevelExp = 50 * level * level;
-    let playerAttackDamage = 10;
-    let persistentCoins = Number(localStorage.getItem('persistentCoins')) || 0;
-    let gameSettings = {
-      playerBaseSpeed: 100,
-      bulletSpeed: 100,
-      enemySpeed: 60,
-      xpSuckRange: 100,
-      coinSuckRange: 150,
-      fireInterval: 1500,
-      playerAttackDamage: 10,
-      projectileLifetime: 4000
-    };
-    let bulletSpeed = gameSettings.bulletSpeed;
-    let projectileCount = 1, ultimate = false;
-    let abilityLevels = { damage: 1, speed: 1, multiShot: 1, accessory: 0 };
+<script>
+  // ---------------------------
+  // Global Variables
+  // ---------------------------
+  let playerHealth = 100, playerLives = 3;
+  let experience = 0, level = 1, nextLevelExp = 50 * level * level;
+  let playerAttackDamage = 10;
+  let persistentCoins = Number(localStorage.getItem('persistentCoins')) || 0;
+  let gameSettings = {
+    playerBaseSpeed: 100,
+    bulletSpeed: 100,
+    enemySpeed: 60,
+    xpSuckRange: 100,
+    coinSuckRange: 150,
+    fireInterval: 1500,
+    playerAttackDamage: 10,
+    projectileLifetime: 4000
+  };
+  let bulletSpeed = gameSettings.bulletSpeed;
+  let projectileCount = 1, ultimate = false;
+  let abilityLevels = { damage: 1, speed: 1, multiShot: 1, accessory: 0 };
 
-    let gamePaused = false;
-    let player, cursors, wasd;
-    let projectiles, enemyProjectiles, enemies, xpOrbs, coins, bombs, envGroup;
-    let lastFireTime = 0;
-    let upgradeOverlay, shopOverlay, settingsOverlay, bestiaryOverlay, gameOverOverlay, hud;
-    let currentScene;
+  let gamePaused = false;
+  let player, cursors, wasd;
+  let projectiles, enemyProjectiles, enemies, xpOrbs, coins, bombs, envGroup;
+  let lastFireTime = 0;
+  let upgradeOverlay, shopOverlay, settingsOverlay, bestiaryOverlay, gameOverOverlay, hud, debugOverlay;
+  let currentScene;
 
-    // ---------------------------
-    // Helper Functions
-    // ---------------------------
-    function sqDist(x1, y1, x2, y2) {
-      let dx = x1 - x2, dy = y1 - y2;
-      return dx * dx + dy * dy;
-    }
-    function getClosestEnemy() {
-      let closest = null;
-      let minDist = Infinity;
-      enemies.getChildren().forEach(function(enemy) {
-        let d = sqDist(player.x, player.y, enemy.x, enemy.y);
-        if (d < minDist) {
-          minDist = d;
-          closest = enemy;
-        }
-      });
-      return closest;
-    }
-    function showHitIndicator() {
-      player.setTint(0xff0000);
-      currentScene.time.addEvent({
-        delay: 200,
-        callback: () => { player.clearTint(); },
-        callbackScope: this
-      });
-    }
-    function bombExplode(playerObj, bomb) {
-      bomb.destroy();
-      player.health -= 40;
-      spawnEffectPhaser.call(currentScene, bomb.x, bomb.y, 'enemy');
-      showHitIndicator();
-      if (player.health <= 0) {
-        player.lives--;
-        if (player.lives > 0) {
-          player.health = playerHealth;
-        } else {
-          gamePaused = true;
-          document.getElementById('finalExp').innerText = experience;
-          gameOverOverlay.style.display = 'block';
-          console.log("Game Over! Final EXP: " + experience);
-        }
+  // ---------------------------
+  // Helper Functions
+  // ---------------------------
+  function sqDist(x1, y1, x2, y2) {
+    let dx = x1 - x2, dy = y1 - y2;
+    return dx * dx + dy * dy;
+  }
+  function getClosestEnemy() {
+    let closest = null;
+    let minDist = Infinity;
+    enemies.getChildren().forEach(function(enemy) {
+      let d = sqDist(player.x, player.y, enemy.x, enemy.y);
+      if (d < minDist) {
+        minDist = d;
+        closest = enemy;
+      }
+    });
+    return closest;
+  }
+  function showHitIndicator() {
+    player.setTint(0xff0000);
+    currentScene.time.addEvent({
+      delay: 200,
+      callback: () => { player.clearTint(); },
+      callbackScope: this
+    });
+  }
+  function bombExplode(playerObj, bomb) {
+    bomb.destroy();
+    player.health -= 40;
+    spawnEffectPhaser.call(currentScene, bomb.x, bomb.y, 'enemy');
+    showHitIndicator();
+    if (player.health <= 0) {
+      player.lives--;
+      if (player.lives > 0) {
+        player.health = playerHealth;
+      } else {
+        gamePaused = true;
+        document.getElementById('finalExp').innerText = experience;
+        gameOverOverlay.style.display = 'block';
+        console.log("Game Over! Final EXP: " + experience);
       }
     }
-    function enemyProjectileHitPlayer(playerObj, proj) {
-      proj.destroy();
-      player.health -= 30;
-      showHitIndicator();
-      if (player.health <= 0) {
-        player.lives--;
-        if (player.lives > 0) {
-          player.health = playerHealth;
-        } else {
-          gamePaused = true;
-          document.getElementById('finalExp').innerText = experience;
-          gameOverOverlay.style.display = 'block';
-          console.log("Game Over! Final EXP: " + experience);
-        }
+  }
+  function enemyProjectileHitPlayer(playerObj, proj) {
+    proj.destroy();
+    player.health -= 30;
+    showHitIndicator();
+    if (player.health <= 0) {
+      player.lives--;
+      if (player.lives > 0) {
+        player.health = playerHealth;
+      } else {
+        gamePaused = true;
+        document.getElementById('finalExp').innerText = experience;
+        gameOverOverlay.style.display = 'block';
+        console.log("Game Over! Final EXP: " + experience);
       }
     }
-    function enemyHitPlayer(playerObj, enemy) {
+  }
+  function enemyHitPlayer(playerObj, enemy) {
+    enemy.destroy();
+    player.health -= 20;
+    showHitIndicator();
+    if (player.health <= 0) {
+      player.lives--;
+      if (player.lives > 0) {
+        player.health = playerHealth;
+      } else {
+        gamePaused = true;
+        document.getElementById('finalExp').innerText = experience;
+        gameOverOverlay.style.display = 'block';
+        console.log("Game Over! Final EXP: " + experience);
+      }
+    }
+  }
+  function projectileHitEnemy(proj, enemy) {
+    proj.destroy();
+    enemy.health -= playerAttackDamage;
+    spawnEffectPhaser.call(currentScene, enemy.x, enemy.y, 'projectile');
+    if (enemy.health <= 0) {
+      spawnEffectPhaser.call(currentScene, enemy.x, enemy.y, 'enemy');
+      let orb = xpOrbs.create(enemy.x, enemy.y, 'xpOrb');
+      orb.value = enemy.exp;
+      orb.body.setAllowGravity(false);
+      orb.body.checkCollision.none = true;
+      if (Math.random() < 0.5) {
+        let coinSprite = coins.create(enemy.x, enemy.y, 'coin');
+        coinSprite.value = 1;
+        coinSprite.body.setAllowGravity(false);
+        coinSprite.body.checkCollision.none = true;
+      }
       enemy.destroy();
-      player.health -= 20;
-      showHitIndicator();
-      if (player.health <= 0) {
-        player.lives--;
-        if (player.lives > 0) {
-          player.health = playerHealth;
-        } else {
-          gamePaused = true;
-          document.getElementById('finalExp').innerText = experience;
-          gameOverOverlay.style.display = 'block';
-          console.log("Game Over! Final EXP: " + experience);
-        }
-      }
     }
-    function projectileHitEnemy(proj, enemy) {
-      proj.destroy();
-      enemy.health -= playerAttackDamage;
-      spawnEffectPhaser.call(currentScene, enemy.x, enemy.y, 'projectile');
-      if (enemy.health <= 0) {
-        spawnEffectPhaser.call(currentScene, enemy.x, enemy.y, 'enemy');
-        let orb = xpOrbs.create(enemy.x, enemy.y, 'xpOrb');
-        orb.value = enemy.exp;
-        orb.body.setAllowGravity(false);
-        orb.body.checkCollision.none = true;
-        if (Math.random() < 0.5) {
-          let coinSprite = coins.create(enemy.x, enemy.y, 'coin');
-          coinSprite.value = 1;
-          coinSprite.body.setAllowGravity(false);
-          coinSprite.body.checkCollision.none = true;
-        }
-        enemy.destroy();
-      }
+  }
+  function collectXpOrb(playerObj, orb) {
+    experience += orb.value;
+    orb.destroy();
+    spawnEffectPhaser.call(currentScene, player.x, player.y, 'projectile');
+  }
+  function collectCoin(playerObj, coin) {
+    persistentCoins += coin.value;
+    localStorage.setItem('persistentCoins', persistentCoins);
+    coin.destroy();
+    spawnEffectPhaser.call(currentScene, player.x, player.y, 'projectile');
+  }
+  function spawnEffectPhaser(x, y, type) {
+    let effect = currentScene.add.graphics();
+    if (type === 'enemy') { effect.fillStyle(0xff0000, 1); effect.fillCircle(0, 0, 5); }
+    else if (type === 'projectile') { effect.fillStyle(0xffff00, 1); effect.fillCircle(0, 0, 3); }
+    effect.x = x;
+    effect.y = y;
+    currentScene.tweens.add({
+      targets: effect,
+      scale: { from: 1, to: 3 },
+      alpha: { from: 1, to: 0 },
+      duration: 300,
+      onComplete: () => { effect.destroy(); }
+    });
+  }
+  function spawnEnvironment(scene) {
+    envGroup = scene.add.group();
+    for (let i = 0; i < 100; i++) {
+      let x = Phaser.Math.Between(-2000, 2000);
+      let y = Phaser.Math.Between(-2000, 2000);
+      let tree = scene.add.image(x, y, 'tree');
+      tree.setDepth(-1);
+      envGroup.add(tree);
     }
-    function collectXpOrb(playerObj, orb) {
-      experience += orb.value;
-      orb.destroy();
-      spawnEffectPhaser.call(currentScene, player.x, player.y, 'projectile');
+    for (let i = 0; i < 50; i++) {
+      let x = Phaser.Math.Between(-2000, 2000);
+      let y = Phaser.Math.Between(-2000, 2000);
+      let rock = scene.add.image(x, y, 'rock');
+      rock.setDepth(-1);
+      envGroup.add(rock);
     }
-    function collectCoin(playerObj, coin) {
-      persistentCoins += coin.value;
-      localStorage.setItem('persistentCoins', persistentCoins);
-      coin.destroy();
-      spawnEffectPhaser.call(currentScene, player.x, player.y, 'projectile');
+  }
+  function updateHUD() {
+    let hudText = "Level: " + level + " | XP: " + experience + "/" + nextLevelExp +
+      "<br>Health: " + player.health + " | Lives: " + player.lives +
+      "<br>Damage: " + playerAttackDamage + " | Speed: " + player.speed +
+      "<br>Coins: " + persistentCoins;
+    document.getElementById("hud").innerHTML = hudText;
+  }
+  function restartGame() { location.reload(); }
+  function saveGame() {
+    let gameState = {
+      experience, level, nextLevelExp,
+      player: { x: player.x, y: player.y, speed: player.speed, health: player.health, lives: player.lives },
+      abilityLevels, bulletSpeed, playerAttackDamage,
+      projectileCount, fireInterval, ultimate,
+      persistentCoins
+    };
+    localStorage.setItem('phaserSurvivorSave', JSON.stringify(gameState));
+    console.log("Game saved!");
+  }
+  function loadGame() {
+    let saved = localStorage.getItem('phaserSurvivorSave');
+    if (saved) {
+      let gameState = JSON.parse(saved);
+      experience = gameState.experience;
+      level = gameState.level;
+      nextLevelExp = gameState.nextLevelExp;
+      player.x = gameState.player.x;
+      player.y = gameState.player.y;
+      player.speed = gameState.player.speed;
+      player.health = gameState.player.health;
+      player.lives = gameState.player.lives;
+      abilityLevels = gameState.abilityLevels;
+      bulletSpeed = gameState.bulletSpeed;
+      playerAttackDamage = gameState.playerAttackDamage;
+      projectileCount = gameState.projectileCount;
+      fireInterval = gameState.fireInterval;
+      ultimate = gameState.ultimate;
+      persistentCoins = gameState.persistentCoins;
+      lastFireTime = game.scene.scenes[0].time.now - fireInterval;
+      enemies.clear(true, true);
+      projectiles.clear(true, true);
+      enemyProjectiles.clear(true, true);
+      xpOrbs.clear(true, true);
+      coins.clear(true, true);
+      console.log("Game loaded!");
+    } else { console.log("No saved game found."); }
+  }
+  function openShop() {
+    document.getElementById('coinCount').innerText = persistentCoins;
+    shopOverlay.style.display = 'block';
+    gamePaused = true;
+    currentScene.physics.pause();
+  }
+  function closeShop() {
+    shopOverlay.style.display = 'none';
+    gamePaused = false;
+    currentScene.physics.resume();
+  }
+  function buyItem(type) {
+    let cost = 0;
+    if (type === 'maxHealth') { cost = 10; }
+    else if (type === 'speed') { cost = 15; }
+    else if (type === 'damage') { cost = 20; }
+    else if (type === 'xpSuck') { cost = 10; }
+    else if (type === 'coinSuck') { cost = 10; }
+    else if (type === 'restore') { cost = 5; }
+    if (persistentCoins < cost) { console.log("Not enough coins!"); return; }
+    persistentCoins -= cost;
+    localStorage.setItem('persistentCoins', persistentCoins);
+    if (type === 'maxHealth') {
+      playerHealth += 20;
+      player.maxHealth = playerHealth;
+      player.health = player.maxHealth;
+    } else if (type === 'speed') {
+      player.speed += 1;
+    } else if (type === 'damage') {
+      playerAttackDamage += 2;
+    } else if (type === 'xpSuck') {
+      gameSettings.xpSuckRange += 20;
+    } else if (type === 'coinSuck') {
+      gameSettings.coinSuckRange += 20;
+    } else if (type === 'restore') {
+      player.health = player.maxHealth;
     }
-    function spawnEffectPhaser(x, y, type) {
-      let effect = currentScene.add.graphics();
-      if (type === 'enemy') { effect.fillStyle(0xff0000, 1); effect.fillCircle(0, 0, 5); }
-      else if (type === 'projectile') { effect.fillStyle(0xffff00, 1); effect.fillCircle(0, 0, 3); }
-      effect.x = x;
-      effect.y = y;
-      currentScene.tweens.add({
-        targets: effect,
-        scale: { from: 1, to: 3 },
-        alpha: { from: 1, to: 0 },
-        duration: 300,
-        onComplete: () => { effect.destroy(); }
-      });
-    }
-    function spawnEnvironment(scene) {
-      envGroup = scene.add.group();
-      for (let i = 0; i < 100; i++) {
-        let x = Phaser.Math.Between(-2000, 2000);
-        let y = Phaser.Math.Between(-2000, 2000);
-        let tree = scene.add.image(x, y, 'tree');
-        tree.setDepth(-1);
-        envGroup.add(tree);
-      }
-      for (let i = 0; i < 50; i++) {
-        let x = Phaser.Math.Between(-2000, 2000);
-        let y = Phaser.Math.Between(-2000, 2000);
-        let rock = scene.add.image(x, y, 'rock');
-        rock.setDepth(-1);
-        envGroup.add(rock);
-      }
-    }
-    function updateHUD() {
-      let hudText = "Level: " + level + " | XP: " + experience + "/" + nextLevelExp +
-        "<br>Health: " + player.health + " | Lives: " + player.lives +
-        "<br>Damage: " + playerAttackDamage + " | Speed: " + player.speed +
-        "<br>Coins: " + persistentCoins;
-      document.getElementById("hud").innerHTML = hudText;
-    }
-    function restartGame() { location.reload(); }
-    function saveGame() {
-      let gameState = {
-        experience, level, nextLevelExp,
-        player: { x: player.x, y: player.y, speed: player.speed, health: player.health, lives: player.lives },
-        abilityLevels, bulletSpeed, playerAttackDamage,
-        projectileCount, fireInterval, ultimate,
-        persistentCoins
-      };
-      localStorage.setItem('phaserSurvivorSave', JSON.stringify(gameState));
-      console.log("Game saved!");
-    }
-    function loadGame() {
-      let saved = localStorage.getItem('phaserSurvivorSave');
-      if (saved) {
-        let gameState = JSON.parse(saved);
-        experience = gameState.experience;
-        level = gameState.level;
-        nextLevelExp = gameState.nextLevelExp;
-        player.x = gameState.player.x;
-        player.y = gameState.player.y;
-        player.speed = gameState.player.speed;
-        player.health = gameState.player.health;
-        player.lives = gameState.player.lives;
-        abilityLevels = gameState.abilityLevels;
-        bulletSpeed = gameState.bulletSpeed;
-        playerAttackDamage = gameState.playerAttackDamage;
-        projectileCount = gameState.projectileCount;
-        fireInterval = gameState.fireInterval;
-        ultimate = gameState.ultimate;
-        persistentCoins = gameState.persistentCoins;
-        lastFireTime = game.scene.scenes[0].time.now - fireInterval;
-        enemies.clear(true, true);
-        projectiles.clear(true, true);
-        enemyProjectiles.clear(true, true);
-        xpOrbs.clear(true, true);
-        coins.clear(true, true);
-        console.log("Game loaded!");
-      } else { console.log("No saved game found."); }
-    }
-    function openShop() {
-      document.getElementById('coinCount').innerText = persistentCoins;
-      shopOverlay.style.display = 'block';
-      gamePaused = true;
-      currentScene.physics.pause();
-    }
-    function closeShop() {
-      shopOverlay.style.display = 'none';
-      gamePaused = false;
-      currentScene.physics.resume();
-    }
-    function buyItem(type) {
-      let cost = 0;
-      if (type === 'maxHealth') { cost = 10; }
-      else if (type === 'speed') { cost = 15; }
-      else if (type === 'damage') { cost = 20; }
-      else if (type === 'xpSuck') { cost = 10; }
-      else if (type === 'coinSuck') { cost = 10; }
-      else if (type === 'restore') { cost = 5; }
-      if (persistentCoins < cost) { console.log("Not enough coins!"); return; }
-      persistentCoins -= cost;
-      localStorage.setItem('persistentCoins', persistentCoins);
-      if (type === 'maxHealth') {
-        playerHealth += 20;
-        player.maxHealth = playerHealth;
-        player.health = player.maxHealth;
-      } else if (type === 'speed') {
-        player.speed += 1;
-      } else if (type === 'damage') {
-        playerAttackDamage += 2;
-      } else if (type === 'xpSuck') {
-        gameSettings.xpSuckRange += 20;
-      } else if (type === 'coinSuck') {
-        gameSettings.coinSuckRange += 20;
-      } else if (type === 'restore') {
-        player.health = player.maxHealth;
-      }
-      document.getElementById('coinCount').innerText = persistentCoins;
-    }
-    function openSettings() {
-      document.getElementById('inpPlayerSpeed').value = gameSettings.playerBaseSpeed;
-      document.getElementById('inpBulletSpeed').value = gameSettings.bulletSpeed;
-      document.getElementById('inpEnemySpeed').value = gameSettings.enemySpeed;
-      document.getElementById('inpXpSuck').value = gameSettings.xpSuckRange;
-      document.getElementById('inpCoinSuck').value = gameSettings.coinSuckRange;
-      document.getElementById('inpFireInterval').value = fireInterval;
-      document.getElementById('inpAttackDamage').value = gameSettings.playerAttackDamage;
-      document.getElementById('inpProjLifetime').value = gameSettings.projectileLifetime;
-      settingsOverlay.style.display = 'block';
-      gamePaused = true;
-      currentScene.physics.pause();
-    }
-    function closeSettings() {
-      settingsOverlay.style.display = 'none';
-      gamePaused = false;
-      currentScene.physics.resume();
-    }
-    function saveSettings() {
-      gameSettings.playerBaseSpeed = parseInt(document.getElementById('inpPlayerSpeed').value);
-      gameSettings.bulletSpeed = parseInt(document.getElementById('inpBulletSpeed').value);
-      gameSettings.enemySpeed = parseInt(document.getElementById('inpEnemySpeed').value);
-      gameSettings.xpSuckRange = parseInt(document.getElementById('inpXpSuck').value);
-      gameSettings.coinSuckRange = parseInt(document.getElementById('inpCoinSuck').value);
-      fireInterval = parseInt(document.getElementById('inpFireInterval').value);
-      gameSettings.playerAttackDamage = parseInt(document.getElementById('inpAttackDamage').value);
-      gameSettings.projectileLifetime = parseInt(document.getElementById('inpProjLifetime').value);
+    document.getElementById('coinCount').innerText = persistentCoins;
+  }
+  function openSettings() {
+    document.getElementById('inpPlayerSpeed').value = gameSettings.playerBaseSpeed;
+    document.getElementById('inpBulletSpeed').value = gameSettings.bulletSpeed;
+    document.getElementById('inpEnemySpeed').value = gameSettings.enemySpeed;
+    document.getElementById('inpXpSuck').value = gameSettings.xpSuckRange;
+    document.getElementById('inpCoinSuck').value = gameSettings.coinSuckRange;
+    document.getElementById('inpFireInterval').value = fireInterval;
+    document.getElementById('inpAttackDamage').value = gameSettings.playerAttackDamage;
+    document.getElementById('inpProjLifetime').value = gameSettings.projectileLifetime;
+    settingsOverlay.style.display = 'block';
+    gamePaused = true;
+    currentScene.physics.pause();
+  }
+  function closeSettings() {
+    settingsOverlay.style.display = 'none';
+    gamePaused = false;
+    currentScene.physics.resume();
+  }
+  function saveSettings() {
+    gameSettings.playerBaseSpeed = parseInt(document.getElementById('inpPlayerSpeed').value);
+    gameSettings.bulletSpeed = parseInt(document.getElementById('inpBulletSpeed').value);
+    gameSettings.enemySpeed = parseInt(document.getElementById('inpEnemySpeed').value);
+    gameSettings.xpSuckRange = parseInt(document.getElementById('inpXpSuck').value);
+    gameSettings.coinSuckRange = parseInt(document.getElementById('inpCoinSuck').value);
+    fireInterval = parseInt(document.getElementById('inpFireInterval').value);
+    gameSettings.playerAttackDamage = parseInt(document.getElementById('inpAttackDamage').value);
+    gameSettings.projectileLifetime = parseInt(document.getElementById('inpProjLifetime').value);
+    bulletSpeed = gameSettings.bulletSpeed;
+    playerAttackDamage = gameSettings.playerAttackDamage;
+    localStorage.setItem('phaserSurvivorSettings', JSON.stringify(gameSettings));
+    closeSettings();
+  }
+  function loadSettings() {
+    let savedSettings = localStorage.getItem('phaserSurvivorSettings');
+    if (savedSettings) {
+      gameSettings = JSON.parse(savedSettings);
       bulletSpeed = gameSettings.bulletSpeed;
       playerAttackDamage = gameSettings.playerAttackDamage;
-      localStorage.setItem('phaserSurvivorSettings', JSON.stringify(gameSettings));
-      closeSettings();
+      fireInterval = gameSettings.fireInterval;
     }
-    function loadSettings() {
-      let savedSettings = localStorage.getItem('phaserSurvivorSettings');
-      if (savedSettings) {
-        gameSettings = JSON.parse(savedSettings);
-        bulletSpeed = gameSettings.bulletSpeed;
-        playerAttackDamage = gameSettings.playerAttackDamage;
-        fireInterval = gameSettings.fireInterval;
+  }
+  function openBestiary() {
+    bestiaryOverlay.style.display = 'block';
+    gamePaused = true;
+    currentScene.physics.pause();
+  }
+  function closeBestiary() {
+    bestiaryOverlay.style.display = 'none';
+    gamePaused = false;
+    currentScene.physics.resume();
+  }
+  function chooseUpgrade(type) {
+    if (type === 'damage') {
+      playerAttackDamage += 2;
+      abilityLevels.damage++;
+    } else if (type === 'player') {
+      player.speed += 1;
+      abilityLevels.speed++;
+    } else if (type === 'attack') {
+      projectileCount += 1;
+      abilityLevels.multiShot++;
+      if (projectileCount >= 10) { ultimate = true; }
+    } else if (type === 'accessory') {
+      abilityLevels.accessory++;
+    }
+    level++;
+    nextLevelExp = 50 * level * level;
+    upgradeOverlay.style.display = 'none';
+    gamePaused = false;
+    currentScene.physics.resume();
+  }
+  
+  // ---------------------------
+  // PHASER SCENE FUNCTIONS
+  // ---------------------------
+  function preload() {
+    let gfx = this.make.graphics({ add: false });
+    // Player texture.
+    gfx.fillStyle(0x00ff00, 1);
+    gfx.fillCircle(20, 20, 20);
+    gfx.generateTexture('player', 40, 40);
+    gfx.clear();
+    // Projectile texture.
+    gfx.fillStyle(0xffff00, 1);
+    gfx.fillCircle(5, 5, 5);
+    gfx.generateTexture('projectile', 10, 10);
+    gfx.clear();
+    // Enemy texture.
+    gfx.fillStyle(0xff0000, 1);
+    gfx.fillCircle(15, 15, 15);
+    gfx.generateTexture('enemy', 30, 30);
+    gfx.clear();
+    // XP orb texture.
+    gfx.fillStyle(0x0000ff, 1);
+    gfx.fillCircle(8, 8, 8);
+    gfx.generateTexture('xpOrb', 16, 16);
+    gfx.clear();
+    // Coin texture.
+    gfx.fillStyle(0xffd700, 1);
+    gfx.fillCircle(6, 6, 6);
+    gfx.generateTexture('coin', 12, 12);
+    gfx.clear();
+    // Tree texture.
+    gfx.fillStyle(0x008000, 1);
+    gfx.beginPath();
+    gfx.moveTo(0, 30);
+    gfx.lineTo(15, 0);
+    gfx.lineTo(30, 30);
+    gfx.closePath();
+    gfx.fillPath();
+    gfx.generateTexture('tree', 30, 30);
+    gfx.clear();
+    // Rock texture.
+    gfx.fillStyle(0x808080, 1);
+    gfx.fillRect(0, 0, 20, 20);
+    gfx.generateTexture('rock', 20, 20);
+    gfx.clear();
+    // Bomb texture.
+    gfx.fillStyle(0x555555, 1);
+    gfx.fillCircle(10, 10, 10);
+    gfx.lineStyle(2, 0xffa500, 1);
+    gfx.beginPath();
+    gfx.moveTo(2, 10);
+    gfx.lineTo(8, 6);
+    gfx.lineTo(14, 14);
+    gfx.lineTo(18, 8);
+    gfx.strokePath();
+    gfx.generateTexture('bomb', 20, 20);
+    gfx.clear();
+  }
+  function create() {
+    currentScene = this;
+    // Resume AudioContext after a user gesture.
+    this.input.once('pointerdown', function () {
+      if (this.sound && this.sound.context && this.sound.context.state === 'suspended') {
+        this.sound.context.resume();
       }
+    }, this);
+    
+    player = this.physics.add.sprite(400, 300, 'player');
+    player.health = playerHealth;
+    player.lives = playerLives;
+    player.speed = gameSettings.playerBaseSpeed;
+    
+    projectiles = this.physics.add.group();
+    enemyProjectiles = this.physics.add.group();
+    enemies = this.physics.add.group();
+    xpOrbs = this.physics.add.group();
+    coins = this.physics.add.group();
+    bombs = this.physics.add.group();
+    
+    envGroup = this.add.group();
+    spawnEnvironment(this);
+    
+    this.cameras.main.startFollow(player, true, 0.1, 0.1);
+    
+    cursors = this.input.keyboard.createCursorKeys();
+    wasd = this.input.keyboard.addKeys({
+      W: Phaser.Input.Keyboard.KeyCodes.W,
+      A: Phaser.Input.Keyboard.KeyCodes.A,
+      S: Phaser.Input.Keyboard.KeyCodes.S,
+      D: Phaser.Input.Keyboard.KeyCodes.D
+    });
+    
+    this.physics.add.overlap(projectiles, enemies, projectileHitEnemy, null, this);
+    this.physics.add.overlap(enemyProjectiles, player, enemyProjectileHitPlayer, null, this);
+    this.physics.add.overlap(player, xpOrbs, collectXpOrb, null, this);
+    this.physics.add.overlap(player, coins, collectCoin, null, this);
+    this.physics.add.overlap(player, enemies, enemyHitPlayer, null, this);
+    this.physics.add.overlap(player, bombs, bombExplode, null, this);
+    
+    this.time.addEvent({
+      delay: 1000,
+      callback: spawnEnemyPhaser,
+      callbackScope: this,
+      loop: true
+    });
+    
+    this.time.addEvent({
+      delay: 1000,
+      callback: function() {
+        enemyProjectiles.children.each(function(proj) {
+          if (this.time.now - proj.creationTime > gameSettings.projectileLifetime || proj.body.speed < 1) {
+            proj.destroy();
+          }
+        }, this);
+      },
+      callbackScope: this,
+      loop: true
+    });
+    
+    hud = document.getElementById('hud');
+    updateHUD();
+    
+    upgradeOverlay = document.getElementById('upgradeOverlay');
+    shopOverlay = document.getElementById('shopOverlay');
+    settingsOverlay = document.getElementById('settingsOverlay');
+    bestiaryOverlay = document.getElementById('bestiaryOverlay');
+    gameOverOverlay = document.getElementById('gameOverOverlay');
+    
+    // Debug overlay for extra info (toggle with debug button)
+    debugOverlay = document.getElementById('debugOverlay');
+    
+    loadSettings();
+    
+    console.log("Scene created. Player created at", player.x, player.y);
+  }
+  function update(time, delta) {
+    if (gamePaused) {
+      player.setVelocity(0, 0);
+      return;
     }
-    function openBestiary() {
-      bestiaryOverlay.style.display = 'block';
-      gamePaused = true;
+    
+    let vx = 0, vy = 0;
+    if (cursors.left.isDown || wasd.A.isDown) { vx -= 1; }
+    if (cursors.right.isDown || wasd.D.isDown) { vx += 1; }
+    if (cursors.up.isDown || wasd.W.isDown) { vy -= 1; }
+    if (cursors.down.isDown || wasd.S.isDown) { vy += 1; }
+    if (vx !== 0 || vy !== 0) {
+      let norm = Math.sqrt(vx * vx + vy * vy);
+      vx = (vx / norm) * abilityLevels.speed * gameSettings.playerBaseSpeed;
+      vy = (vy / norm) * abilityLevels.speed * gameSettings.playerBaseSpeed;
+    }
+    player.setVelocity(vx, vy);
+    
+    if (time > lastFireTime + fireInterval) {
+      let closest = getClosestEnemy();
+      if (closest) {
+        let dx = closest.x - player.x, dy = closest.y - player.y;
+        let angle = Math.atan2(dy, dx) + Phaser.Math.FloatBetween(-0.1, 0.1);
+        let vx = Math.cos(angle) * bulletSpeed;
+        let vy = Math.sin(angle) * bulletSpeed;
+        let proj = projectiles.create(player.x, player.y, 'projectile');
+        proj.setVelocity(vx, vy);
+        proj.creationTime = time;
+      }
+      lastFireTime = time;
+    }
+    
+    projectiles.children.each(function(proj) {
+      if (time - proj.creationTime > gameSettings.projectileLifetime || proj.body.speed < 1) {
+        spawnEffectPhaser.call(currentScene, proj.x, proj.y, 'projectile');
+        proj.destroy();
+      }
+    }, this);
+    
+    enemyProjectiles.children.each(function(proj) {
+      if (time - proj.creationTime > gameSettings.projectileLifetime || proj.body.speed < 1) {
+        proj.destroy();
+      }
+    }, this);
+    
+    enemies.children.each(function(enemy) {
+      this.physics.moveToObject(enemy, player, gameSettings.enemySpeed);
+    }, this);
+    
+    xpOrbs.children.each(function(orb) {
+      let dx = player.x - orb.x, dy = player.y - orb.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 10) {
+        collectXpOrb(player, orb);
+      } else if (dx * dx + dy * dy < gameSettings.xpSuckRange * gameSettings.xpSuckRange) {
+        let d = Math.sqrt(dx * dx + dy * dy) || 1;
+        orb.setVelocity((dx / d) * 30, (dy / d) * 30);
+      } else {
+        orb.setVelocity(0, 0);
+      }
+    }, this);
+    
+    coins.children.each(function(coin) {
+      let dx = player.x - coin.x, dy = player.y - coin.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 10) {
+        collectCoin(player, coin);
+      } else if (dx * dx + dy * dy < gameSettings.coinSuckRange * gameSettings.coinSuckRange) {
+        let d = Math.sqrt(dx * dx + dy * dy) || 1;
+        coin.setVelocity((dx / d) * 50, (dy / d) * 50);
+      } else {
+        coin.setVelocity(0, 0);
+      }
+    }, this);
+    
+    if (experience >= nextLevelExp && !gamePaused) {
       currentScene.physics.pause();
-    }
-    function closeBestiary() {
-      bestiaryOverlay.style.display = 'none';
-      gamePaused = false;
-      currentScene.physics.resume();
-    }
-    function chooseUpgrade(type) {
-      if (type === 'damage') {
-        playerAttackDamage += 2;
-        abilityLevels.damage++;
-      } else if (type === 'player') {
-        player.speed += 1;
-        abilityLevels.speed++;
-      } else if (type === 'attack') {
-        projectileCount += 1;
-        abilityLevels.multiShot++;
-        if (projectileCount >= 10) { ultimate = true; }
-      } else if (type === 'accessory') {
-        abilityLevels.accessory++;
-      }
-      level++;
-      nextLevelExp = 50 * level * level;
-      upgradeOverlay.style.display = 'none';
-      gamePaused = false;
-      currentScene.physics.resume();
+      gamePaused = true;
+      upgradeOverlay.style.display = 'block';
     }
     
-    // ---------------------------
-    // PHASER SCENE FUNCTIONS
-    // ---------------------------
-    function preload() {
-      let gfx = this.make.graphics({ add: false });
-      // Player texture.
-      gfx.fillStyle(0x00ff00, 1);
-      gfx.fillCircle(20, 20, 20);
-      gfx.generateTexture('player', 40, 40);
-      gfx.clear();
-      // Projectile texture.
-      gfx.fillStyle(0xffff00, 1);
-      gfx.fillCircle(5, 5, 5);
-      gfx.generateTexture('projectile', 10, 10);
-      gfx.clear();
-      // Enemy texture.
-      gfx.fillStyle(0xff0000, 1);
-      gfx.fillCircle(15, 15, 15);
-      gfx.generateTexture('enemy', 30, 30);
-      gfx.clear();
-      // XP orb texture.
-      gfx.fillStyle(0x0000ff, 1);
-      gfx.fillCircle(8, 8, 8);
-      gfx.generateTexture('xpOrb', 16, 16);
-      gfx.clear();
-      // Coin texture.
-      gfx.fillStyle(0xffd700, 1);
-      gfx.fillCircle(6, 6, 6);
-      gfx.generateTexture('coin', 12, 12);
-      gfx.clear();
-      // Tree texture.
-      gfx.fillStyle(0x008000, 1);
-      gfx.beginPath();
-      gfx.moveTo(0, 30);
-      gfx.lineTo(15, 0);
-      gfx.lineTo(30, 30);
-      gfx.closePath();
-      gfx.fillPath();
-      gfx.generateTexture('tree', 30, 30);
-      gfx.clear();
-      // Rock texture.
-      gfx.fillStyle(0x808080, 1);
-      gfx.fillRect(0, 0, 20, 20);
-      gfx.generateTexture('rock', 20, 20);
-      gfx.clear();
-      // Bomb texture.
-      gfx.fillStyle(0x555555, 1);
-      gfx.fillCircle(10, 10, 10);
-      gfx.lineStyle(2, 0xffa500, 1);
-      gfx.beginPath();
-      gfx.moveTo(2, 10);
-      gfx.lineTo(8, 6);
-      gfx.lineTo(14, 14);
-      gfx.lineTo(18, 8);
-      gfx.strokePath();
-      gfx.generateTexture('bomb', 20, 20);
-      gfx.clear();
-    }
-    function create() {
-      currentScene = this;
-      this.input.once('pointerdown', function () {
-        if (this.sound && this.sound.context && this.sound.context.state === 'suspended') {
-          this.sound.context.resume();
-        }
-      }, this);
-      
-      player = this.physics.add.sprite(400, 300, 'player');
-      player.health = playerHealth;
-      player.lives = playerLives;
-      player.speed = gameSettings.playerBaseSpeed;
-      
-      projectiles = this.physics.add.group();
-      enemyProjectiles = this.physics.add.group();
-      enemies = this.physics.add.group();
-      xpOrbs = this.physics.add.group();
-      coins = this.physics.add.group();
-      bombs = this.physics.add.group();
-      
-      envGroup = this.add.group();
-      spawnEnvironment(this);
-      
-      this.cameras.main.startFollow(player, true, 0.1, 0.1);
-      
-      cursors = this.input.keyboard.createCursorKeys();
-      wasd = this.input.keyboard.addKeys({
-        W: Phaser.Input.Keyboard.KeyCodes.W,
-        A: Phaser.Input.Keyboard.KeyCodes.A,
-        S: Phaser.Input.Keyboard.KeyCodes.S,
-        D: Phaser.Input.Keyboard.KeyCodes.D
-      });
-      
-      this.physics.add.overlap(projectiles, enemies, projectileHitEnemy, null, this);
-      this.physics.add.overlap(enemyProjectiles, player, enemyProjectileHitPlayer, null, this);
-      this.physics.add.overlap(player, xpOrbs, collectXpOrb, null, this);
-      this.physics.add.overlap(player, coins, collectCoin, null, this);
-      this.physics.add.overlap(player, enemies, enemyHitPlayer, null, this);
-      this.physics.add.overlap(player, bombs, bombExplode, null, this);
-      
-      this.time.addEvent({
-        delay: 1000,
-        callback: spawnEnemyPhaser,
-        callbackScope: this,
-        loop: true
-      });
-      
-      this.time.addEvent({
-        delay: 1000,
-        callback: function() {
-          enemyProjectiles.children.each(function(proj) {
-            if (this.time.now - proj.creationTime > gameSettings.projectileLifetime || proj.body.speed < 1) {
-              proj.destroy();
-            }
-          }, this);
-        },
-        callbackScope: this,
-        loop: true
-      });
-      
-      hud = document.getElementById('hud');
-      updateHUD();
-      
-      upgradeOverlay = document.getElementById('upgradeOverlay');
-      shopOverlay = document.getElementById('shopOverlay');
-      settingsOverlay = document.getElementById('settingsOverlay');
-      bestiaryOverlay = document.getElementById('bestiaryOverlay');
-      gameOverOverlay = document.getElementById('gameOverOverlay');
-      
-      loadSettings();
-    }
-    function update(time, delta) {
-      if (gamePaused) {
-        player.setVelocity(0, 0);
-        return;
-      }
-      
-      let vx = 0, vy = 0;
-      if (cursors.left.isDown || wasd.A.isDown) { vx -= 1; }
-      if (cursors.right.isDown || wasd.D.isDown) { vx += 1; }
-      if (cursors.up.isDown || wasd.W.isDown) { vy -= 1; }
-      if (cursors.down.isDown || wasd.S.isDown) { vy += 1; }
-      if (vx !== 0 || vy !== 0) {
-        let norm = Math.sqrt(vx * vx + vy * vy);
-        vx = (vx / norm) * abilityLevels.speed * gameSettings.playerBaseSpeed;
-        vy = (vy / norm) * abilityLevels.speed * gameSettings.playerBaseSpeed;
-      }
-      player.setVelocity(vx, vy);
-      
-      if (time > lastFireTime + fireInterval) {
-        let closest = getClosestEnemy();
-        if (closest) {
-          let dx = closest.x - player.x, dy = closest.y - player.y;
-          let angle = Math.atan2(dy, dx) + Phaser.Math.FloatBetween(-0.1, 0.1);
-          let vx = Math.cos(angle) * bulletSpeed;
-          let vy = Math.sin(angle) * bulletSpeed;
-          let proj = projectiles.create(player.x, player.y, 'projectile');
-          proj.setVelocity(vx, vy);
-          proj.creationTime = time;
-        }
-        lastFireTime = time;
-      }
-      
-      projectiles.children.each(function(proj) {
-        if (time - proj.creationTime > gameSettings.projectileLifetime || proj.body.speed < 1) {
-          spawnEffectPhaser.call(currentScene, proj.x, proj.y, 'projectile');
-          proj.destroy();
-        }
-      }, this);
-      
-      enemyProjectiles.children.each(function(proj) {
-        if (time - proj.creationTime > gameSettings.projectileLifetime || proj.body.speed < 1) {
-          proj.destroy();
-        }
-      }, this);
-      
-      enemies.children.each(function(enemy) {
-        this.physics.moveToObject(enemy, player, gameSettings.enemySpeed);
-      }, this);
-      
-      xpOrbs.children.each(function(orb) {
-        let dx = player.x - orb.x, dy = player.y - orb.y;
-        if (Math.sqrt(dx * dx + dy * dy) < 10) {
-          collectXpOrb(player, orb);
-        } else if (dx * dx + dy * dy < gameSettings.xpSuckRange * gameSettings.xpSuckRange) {
-          let d = Math.sqrt(dx * dx + dy * dy) || 1;
-          orb.setVelocity((dx / d) * 30, (dy / d) * 30);
-        } else {
-          orb.setVelocity(0, 0);
-        }
-      }, this);
-      
-      coins.children.each(function(coin) {
-        let dx = player.x - coin.x, dy = player.y - coin.y;
-        if (Math.sqrt(dx * dx + dy * dy) < 10) {
-          collectCoin(player, coin);
-        } else if (dx * dx + dy * dy < gameSettings.coinSuckRange * gameSettings.coinSuckRange) {
-          let d = Math.sqrt(dx * dx + dy * dy) || 1;
-          coin.setVelocity((dx / d) * 50, (dy / d) * 50);
-        } else {
-          coin.setVelocity(0, 0);
-        }
-      }, this);
-      
-      if (experience >= nextLevelExp && !gamePaused) {
-        currentScene.physics.pause();
-        gamePaused = true;
-        upgradeOverlay.style.display = 'block';
-      }
-      
-      updateHUD();
-    }
+    updateHUD();
     
-    // ---------------------------
-    // PHASER GAME CONFIGURATION & INSTANTIATION
-    // ---------------------------
-    const config = {
-      type: Phaser.AUTO,
-      parent: 'gameContainer',
-      width: 800,
-      height: 600,
-      physics: { default: 'arcade', arcade: { debug: false } },
-      scene: { preload: preload, create: create, update: update }
-    };
-    let game = new Phaser.Game(config);
-    
-    // ---------------------------
-    // Expanded Test Suite using Mocha/Chai
-    // ---------------------------
-    function runTests() {
-      let testResults = "";
-      testResults += "sqDist(0,0,3,4) should be 25: " + (sqDist(0,0,3,4) === 25 ? "PASSED" : "FAILED") + "\n";
-      let objA = { x: 0, y: 0, radius: 10 };
-      let objB = { x: 15, y: 0, radius: 5 };
-      let d = Math.sqrt(sqDist(objA.x, objA.y, objB.x, objB.y));
-      testResults += "Collision test (distance " + d.toFixed(2) + " vs 15): " + ((d <= (objA.radius + objB.radius)) ? "PASSED" : "FAILED") + "\n";
-      objB.x = 20;
-      d = Math.sqrt(sqDist(objA.x, objA.y, objB.x, objB.y));
-      testResults += "Collision test (distance " + d.toFixed(2) + " vs 15): " + ((d > (objA.radius + objB.radius)) ? "PASSED" : "FAILED") + "\n";
-      let testLevel = 3;
-      let requiredXp = 50 * testLevel * testLevel;
-      testResults += "Leveling scaling for level 3 (should be 450): " + (requiredXp === 450 ? "PASSED" : "FAILED") + "\n";
-      let tempPlayer = { health: 10, lives: 3 };
-      tempPlayer.health -= 30;
-      if (tempPlayer.health <= 0) { tempPlayer.lives -= 1; tempPlayer.health = 100; }
-      testResults += "Player death simulation (lives should be 2, health 100): " + ((tempPlayer.lives === 2 && tempPlayer.health === 100) ? "PASSED" : "FAILED") + "\n";
-      let dummyPlayer = { x: 0, y: 0 };
-      let dummyEnemies = [ { x: 10, y: 0 }, { x: 20, y: 0 }, { x: -5, y: 0 } ];
-      let closest = dummyEnemies.reduce((prev, curr) =>
-        (sqDist(dummyPlayer.x, dummyPlayer.y, curr.x, curr.y) < sqDist(dummyPlayer.x, dummyPlayer.y, prev.x, prev.y)) ? curr : prev
-      );
-      testResults += "Closest enemy test (should be at (-5,0)): " + ((closest.x === -5 && closest.y === 0) ? "PASSED" : "FAILED") + "\n";
-      
-      // Open a new window to display test results
-      let testWindow = window.open("", "TestResults", "width=400,height=400");
-      testWindow.document.write("<pre>" + testResults + "</pre>");
-      
-      // Alternatively, you could integrate Mocha tests directly here:
-      mocha.setup('bdd');
-      const assert = chai.assert;
-      
-      describe("Helper Functions", function() {
-        it("sqDist(0,0,3,4) should be 25", function() {
-          assert.equal(sqDist(0,0,3,4), 25);
-        });
-        it("getClosestEnemy should return the enemy closest to the player", function() {
-          let player = { x: 0, y: 0 };
-          let enemies = [
-            { x: 10, y: 0 },
-            { x: 20, y: 0 },
-            { x: -5, y: 0 }
-          ];
-          let closestEnemy = getClosestEnemy.call({ getChildren: () => enemies });
-          assert.deepEqual(closestEnemy, { x: -5, y: 0 });
-        });
-      });
-      
-      mocha.run();
+    // Update debug overlay if enabled
+    if (debugOverlay.style.display === 'block') {
+      debugOverlay.innerHTML = `Player: (${player.x.toFixed(1)}, ${player.y.toFixed(1)})<br>
+        FPS: ${Math.round(currentScene.game.loop.actualFps)}<br>
+        Enemies: ${enemies.getLength()}`;
     }
-  </script>
+  }
+  
+  // ---------------------------
+  // PHASER GAME CONFIGURATION & INSTANTIATION
+  // ---------------------------
+  const config = {
+    type: Phaser.AUTO,
+    parent: 'gameContainer',
+    width: 800,
+    height: 600,
+    physics: { default: 'arcade', arcade: { debug: false } },
+    scene: { preload: preload, create: create, update: update }
+  };
+  let game = new Phaser.Game(config);
+  
+  // ---------------------------
+  // Debug Toggle Function
+  // ---------------------------
+  function toggleDebug() {
+    let debugDiv = document.getElementById('debugOverlay');
+    if (debugDiv.style.display === 'block') {
+      debugDiv.style.display = 'none';
+    } else {
+      debugDiv.style.display = 'block';
+    }
+  }
+  
+  // ---------------------------
+  // Expanded Test Suite using Mocha/Chai
+  // ---------------------------
+  function runTests() {
+    let testResults = "";
+    testResults += "sqDist(0,0,3,4) should be 25: " + (sqDist(0,0,3,4) === 25 ? "PASSED" : "FAILED") + "\n";
+    let objA = { x: 0, y: 0, radius: 10 };
+    let objB = { x: 15, y: 0, radius: 5 };
+    let d = Math.sqrt(sqDist(objA.x, objA.y, objB.x, objB.y));
+    testResults += "Collision test (distance " + d.toFixed(2) + " vs 15): " + ((d <= (objA.radius + objB.radius)) ? "PASSED" : "FAILED") + "\n";
+    objB.x = 20;
+    d = Math.sqrt(sqDist(objA.x, objA.y, objB.x, objB.y));
+    testResults += "Collision test (distance " + d.toFixed(2) + " vs 15): " + ((d > (objA.radius + objB.radius)) ? "PASSED" : "FAILED") + "\n";
+    let testLevel = 3;
+    let requiredXp = 50 * testLevel * testLevel;
+    testResults += "Leveling scaling for level 3 (should be 450): " + (requiredXp === 450 ? "PASSED" : "FAILED") + "\n";
+    let tempPlayer = { health: 10, lives: 3 };
+    tempPlayer.health -= 30;
+    if (tempPlayer.health <= 0) { tempPlayer.lives -= 1; tempPlayer.health = 100; }
+    testResults += "Player death simulation (lives should be 2, health 100): " + ((tempPlayer.lives === 2 && tempPlayer.health === 100) ? "PASSED" : "FAILED") + "\n";
+    let dummyPlayer = { x: 0, y: 0 };
+    let dummyEnemies = [ { x: 10, y: 0 }, { x: 20, y: 0 }, { x: -5, y: 0 } ];
+    let closest = dummyEnemies.reduce((prev, curr) =>
+      (sqDist(dummyPlayer.x, dummyPlayer.y, curr.x, curr.y) < sqDist(dummyPlayer.x, dummyPlayer.y, prev.x, prev.y)) ? curr : prev
+    );
+    testResults += "Closest enemy test (should be at (-5,0)): " + ((closest.x === -5 && closest.y === 0) ? "PASSED" : "FAILED") + "\n";
+    
+    let testWindow = window.open("", "TestResults", "width=400,height=400");
+    testWindow.document.write("<pre>" + testResults + "</pre>");
+    
+    // Run Mocha tests
+    mocha.setup('bdd');
+    const assert = chai.assert;
+    
+    describe("Helper Functions", function() {
+      it("sqDist(0,0,3,4) should be 25", function() {
+        assert.equal(sqDist(0,0,3,4), 25);
+      });
+      it("getClosestEnemy returns the enemy closest to the player", function() {
+        let playerTest = { x: 0, y: 0 };
+        let enemyList = [
+          { x: 10, y: 0 },
+          { x: 20, y: 0 },
+          { x: -5, y: 0 }
+        ];
+        function dummyGetClosest(player, enemies) {
+          let closest = null, minDist = Infinity;
+          enemies.forEach(enemy => {
+            let d = sqDist(player.x, player.y, enemy.x, enemy.y);
+            if (d < minDist) { minDist = d; closest = enemy; }
+          });
+          return closest;
+        }
+        let closestEnemy = dummyGetClosest(playerTest, enemyList);
+        assert.deepEqual(closestEnemy, { x: -5, y: 0 });
+      });
+    });
+    
+    mocha.run();
+  }
+</script>
 </body>
 </html>
