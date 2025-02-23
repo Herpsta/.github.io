@@ -1,4 +1,6 @@
 // src/core/Constants.js
+
+// Game Constants
 export const GAME_CONSTANTS = {
     VERSION: '1.0.0',
     CANVAS: {
@@ -34,6 +36,7 @@ export const GAME_CONSTANTS = {
     }
 };
 
+// Event Names
 export const EVENTS = {
     GAME: {
         START: 'game-start',
@@ -66,34 +69,28 @@ export const EVENTS = {
     SCORE: {
         UPDATE: 'score-update',
         MULTIPLIER_CHANGE: 'score-multiplier-change'
-    },
-    TIME: {
-        UPDATE: 'time-update'
-    },
-    SAVE: {
-        SUCCESS: 'save-success',
-        ERROR: 'save-error',
-        LOADED: 'save-loaded',
-        DELETED: 'save-deleted'
-    },
-    UI: {
-        UPDATE: 'ui-update',
-        SHOW_MESSAGE: 'ui-show-message'
     }
 };
 
-export const SCENES = {
-    BOOT: 'BootScene',
-    LOAD: 'LoadScene',
-    MENU: 'MenuScene',
-    GAME: 'GameScene',
-    UI: 'UIScene',
-    PAUSE: 'PauseScene',
-    OPTIONS: 'OptionsScene',
-    CREDITS: 'CreditsScene',
-    GAME_OVER: 'GameOverScene'
+// Colors
+export const COLORS = {
+    UI: {
+        PRIMARY: '#00ff00',
+        SECONDARY: '#00ffff',
+        WARNING: '#ffff00',
+        DANGER: '#ff0000',
+        TEXT: '#ffffff',
+        BACKGROUND: '#000000'
+    },
+    POWERUPS: {
+        HEALTH: 0x00ff00,
+        SPEED: 0xffff00,
+        DAMAGE: 0xff0000,
+        SHIELD: 0x0000ff
+    }
 };
 
+// Asset Keys
 export const ASSETS = {
     SPRITES: {
         PLAYER: 'player',
@@ -119,23 +116,7 @@ export const ASSETS = {
     }
 };
 
-export const COLORS = {
-    UI: {
-        PRIMARY: '#00ff00',
-        SECONDARY: '#00ffff',
-        WARNING: '#ffff00',
-        DANGER: '#ff0000',
-        TEXT: '#ffffff',
-        BACKGROUND: '#000000'
-    },
-    POWERUPS: {
-        HEALTH: '#00ff00',
-        SPEED: '#ffff00',
-        DAMAGE: '#ff0000',
-        SHIELD: '#0000ff'
-    }
-};
-
+// Layer Depths
 export const DEPTHS = {
     BACKGROUND: 0,
     ENTITIES: 10,
@@ -145,26 +126,11 @@ export const DEPTHS = {
     OVERLAY: 1000
 };
 
-export const CONTROLS = {
-    MOVEMENT: {
-        UP: ['W', 'UP'],
-        DOWN: ['S', 'DOWN'],
-        LEFT: ['A', 'LEFT'],
-        RIGHT: ['D', 'RIGHT']
-    },
-    ACTIONS: {
-        SHOOT: ['SPACE', 'LEFT_CLICK'],
-        PAUSE: 'ESC',
-        INTERACT: 'E'
-    }
-};
-
+// Make sure to export everything as default as well
 export default {
     GAME_CONSTANTS,
     EVENTS,
-    SCENES,
-    ASSETS,
     COLORS,
-    DEPTHS,
-    CONTROLS
+    ASSETS,
+    DEPTHS
 };

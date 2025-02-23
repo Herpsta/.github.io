@@ -1,5 +1,5 @@
 // src/systems/PowerupSystem.js
-import { EVENTS, GAME_CONSTANTS, COLORS } from '../core/Constants.js';
+import { EVENTS, GAME_CONSTANTS, COLORS, ASSETS, DEPTHS } from '../core/Constants.js';
 
 export default class PowerupSystem {
     constructor(scene) {
