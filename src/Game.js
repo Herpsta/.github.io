@@ -1,5 +1,10 @@
 // src/Game.js
 import { GAME_CONSTANTS } from './core/Constants.js';
+import BootScene from './scenes/BootScene.js';
+import LoadScene from './scenes/LoadScene.js';
+import MenuScene from './scenes/MenuScene.js';
+import GameScene from './scenes/GameScene.js';
+import UIScene from './scenes/UIScene.js';
 
 export default class Game extends Phaser.Game {
     constructor() {
