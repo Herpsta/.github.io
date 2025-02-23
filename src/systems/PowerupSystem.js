@@ -1,5 +1,5 @@
 // src/systems/PowerupSystem.js
-import { EVENTS } from '../core/Constants.js';
+import { EVENTS, GAME_CONSTANTS, COLORS } from '../core/Constants.js';
 
 export default class PowerupSystem {
     constructor(scene) {
@@ -10,43 +10,51 @@ export default class PowerupSystem {
 
     setupPowerupTypes() {
         this.powerupTypes = {
-            speedBoost: {
-                sprite: 'powerup_speed',
-                color: 0xffff00,
-                duration: 5000,
+            health: {
+                sprite: ASSETS.SPRITES.POWERUP,
+                color: COLORS.POWERUPS.HEALTH,
+                duration: GAME_CONSTANTS.POWERUP.DURATION,
+                apply: (player) => {
+                    const healAmount = player.getData('maxHealth') * 0.3;
+                    const currentHealth = player.getData('health');
+                    const maxHealth = player.getData('maxHealth');
+                    player.setData('health', Math.min(currentHealth + healAmount, maxHealth));
+                    return () => {}; // Health powerup has no revert function
+                }
+            },
+            speed: {
+                sprite: ASSETS.SPRITES.POWERUP,
+                color: COLORS.POWERUPS.SPEED,
+                duration: GAME_CONSTANTS.POWERUP.DURATION,
                 apply: (player) => {
                     const originalSpeed = player.getData('speed');
-                    player.setData('speed', originalSpeed * 1.5);
+                    const newSpeed = originalSpeed * 1.5;
+                    player.setData('speed', newSpeed);
                     return () => player.setData('speed', originalSpeed);
                 }
             },
-            damageBoost: {
-                sprite: 'powerup_damage',
-                color: 0xff0000,
-                duration: 7000,
+            damage: {
+                sprite: ASSETS.SPRITES.POWERUP,
+                color: COLORS.POWERUPS.DAMAGE,
+                duration: GAME_CONSTANTS.POWERUP.DURATION,
                 apply: (player) => {
                     const originalDamage = player.getData('damage');
-                    player.setData('damage', originalDamage * 1.75);
+                    const newDamage = originalDamage * 1.75;
+                    player.setData('damage', newDamage);
                     return () => player.setData('damage', originalDamage);
                 }
             },
-            rapidFire: {
-                sprite: 'powerup_fire',
-                color: 0x00ffff,
-                duration: 4000,
-                apply: (player) => {
-                    const originalRate = player.getData('fireRate');
-                    player.setData('fireRate', originalRate * 0.5);
-                    return () => player.setData('fireRate', originalRate);
-                }
-            },
             shield: {
-                sprite: 'powerup_shield',
-                color: 0x0000ff,
-                duration: 8000,
+                sprite: ASSETS.SPRITES.POWERUP,
+                color: COLORS.POWERUPS.SHIELD,
+                duration: GAME_CONSTANTS.POWERUP.DURATION,
                 apply: (player) => {
                     const shield = this.createShieldEffect(player);
-                    return () => shield.destroy();
+                    player.setData('isShielded', true);
+                    return () => {
+                        shield.destroy();
+                        player.setData('isShielded', false);
+                    };
                 }
             }
         };
@@ -55,12 +63,18 @@ export default class PowerupSystem {
     createShieldEffect(player) {
         const shield = this.scene.add.circle(
             player.x, player.y, 40,
-            0x0000ff, 0.3
+            COLORS.POWERUPS.SHIELD,
+            0.3
         );
         
+        // Add shield to effects layer
+        shield.setDepth(DEPTHS.EFFECTS);
+        
+        // Add pulsing effect
         this.scene.tweens.add({
             targets: shield,
             alpha: 0.1,
+            scale: 1.1,
             yoyo: true,
             duration: 1000,
             repeat: -1
@@ -74,21 +88,41 @@ export default class PowerupSystem {
 
         shield.destroy = () => {
             this.scene.events.off('update', updateShield);
+            this.createShieldBreakEffect(shield.x, shield.y);
             shield.destroy();
         };
 
         return shield;
     }
 
+    createShieldBreakEffect(x, y) {
+        const particles = this.scene.add.particles(ASSETS.SPRITES.PARTICLE);
+        
+        particles.createEmitter({
+            x: x,
+            y: y,
+            speed: { min: 100, max: 200 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 0.5, end: 0 },
+            tint: COLORS.POWERUPS.SHIELD,
+            lifespan: 500,
+            quantity: 20,
+            blendMode: 'ADD'
+        });
+
+        this.scene.time.delayedCall(500, () => particles.destroy());
+    }
+
     spawnPowerup(x, y) {
-        const types = Object.keys(this.powerupTypes);
+        const types = GAME_CONSTANTS.POWERUP.TYPES;
         const randomType = types[Math.floor(Math.random() * types.length)];
         const powerupConfig = this.powerupTypes[randomType];
 
         const powerup = this.scene.entityManager.createEntity('powerups', x, y, {
             sprite: powerupConfig.sprite,
             type: randomType,
-            ...powerupConfig
+            color: powerupConfig.color,
+            duration: powerupConfig.duration
         });
 
         // Add floating animation
@@ -102,6 +136,8 @@ export default class PowerupSystem {
 
         // Add glow effect
         const glow = this.scene.add.circle(x, y, 30, powerupConfig.color, 0.3);
+        glow.setDepth(DEPTHS.EFFECTS);
+        
         this.scene.tweens.add({
             targets: glow,
             alpha: 0.1,
@@ -121,7 +157,7 @@ export default class PowerupSystem {
         const type = powerup.getData('type');
         const powerupConfig = this.powerupTypes[type];
 
-        // Remove existing powerup of same type
+        // Handle existing powerup of same type
         if (this.activePowerups.has(type)) {
             const existing = this.activePowerups.get(type);
             existing.timer.remove();
@@ -129,17 +165,20 @@ export default class PowerupSystem {
             this.activePowerups.delete(type);
         }
 
-        // Apply new powerup
+        // Apply powerup effect
         const revertFunction = powerupConfig.apply(player);
+        
+        // Create timer for powerup duration
         const timer = this.scene.time.delayedCall(
             powerupConfig.duration,
             () => {
                 revertFunction();
                 this.activePowerups.delete(type);
-                this.createExpireEffect(player.x, player.y, powerupConfig.color);
+                this.scene.events.emit(EVENTS.POWERUP.EXPIRED, type);
             }
         );
 
+        // Store active powerup
         this.activePowerups.set(type, {
             timer: timer,
             revert: revertFunction
@@ -148,17 +187,24 @@ export default class PowerupSystem {
         // Create collect effect
         this.createCollectEffect(powerup);
 
-        // Remove powerup and its glow effect
+        // Play powerup sound
+        this.scene.sound.play(ASSETS.AUDIO.SFX.POWERUP, { volume: 0.5 });
+
+        // Clean up powerup
         const glow = powerup.getData('glowEffect');
         if (glow) glow.destroy();
         this.scene.entityManager.removeEntity(powerup);
 
         // Emit collection event
-        this.scene.events.emit(EVENTS.POWERUP.COLLECTED, type);
+        this.scene.events.emit(EVENTS.POWERUP.COLLECTED, {
+            type: type,
+            duration: powerupConfig.duration
+        });
     }
 
     createCollectEffect(powerup) {
-        const particles = this.scene.add.particles('particle');
+        const particles = this.scene.add.particles(ASSETS.SPRITES.PARTICLE);
+        
         const emitter = particles.createEmitter({
             x: powerup.x,
             y: powerup.y,
@@ -172,21 +218,9 @@ export default class PowerupSystem {
 
         this.scene.time.delayedCall(500, () => {
             emitter.stop();
-            this.scene.time.delayedCall(1000, () => {
+            this.scene.time.delayedCall(500, () => {
                 particles.destroy();
             });
-        });
-    }
-
-    createExpireEffect(x, y, color) {
-        const circle = this.scene.add.circle(x, y, 40, color, 0.5);
-        
-        this.scene.tweens.add({
-            targets: circle,
-            scale: 2,
-            alpha: 0,
-            duration: 500,
-            onComplete: () => circle.destroy()
         });
     }
 
